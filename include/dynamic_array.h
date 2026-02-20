@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdlib.h>
 
 #define PUSH(array, value, initial_capacity) \
