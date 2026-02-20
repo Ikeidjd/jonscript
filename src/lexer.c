@@ -31,8 +31,11 @@ static char* read_file(const char* filepath) {
     fseek(file, 0, SEEK_SET);
 
     char* buffer = (char*) malloc(length + 1);
-    fread(buffer, 1, length, file);
     buffer[length] = '\0';
+
+    fread(buffer, 1, length, file);
+    fclose(file);
+
     return buffer;
 }
 
