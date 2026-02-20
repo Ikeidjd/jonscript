@@ -44,6 +44,9 @@ static int anal(Semen* self, NodeArray* nodes, size_t index) {
     switch(node->type) {
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_INT: return anal_int(self, nodes, &node->as.int_literal);
+        default:
+            fprintf(stderr, "Unknown NodeType %d\n", node->type);
+            return 0;
     }
 }
 
