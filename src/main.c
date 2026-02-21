@@ -15,7 +15,7 @@ int main() {
     node_array_println(&nodes);
     printf("\n");
 
-    printf("%d", analyze(&nodes));
+    printf("%d\n\n", analyze(&nodes));
 
     Chunk chunk = compile(&nodes);
     chunk_disassemble(&chunk);

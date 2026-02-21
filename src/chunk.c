@@ -58,6 +58,7 @@ void chunk_disassemble(Chunk* self) {
         value_print(self->values.data[i]);
         printf("]");
     }
+    if(self->values.length == 0) printf("[]");
     printf("\n");
     size_t offset = 0;
     while(offset < self->code.length) offset = chunk_disassemble_op(self, offset);
