@@ -4,17 +4,11 @@
 
 void opcode_fprint(FILE* file, Opcode self) {
     switch(self) {
-        case OP_LOAD_1B:
-            fprintf(file, "OP_LOAD_1B");
+        case OP_LOAD_BYTE:
+            fprintf(file, "OP_LOAD_BYTE");
             break;
-        case OP_LOAD_2B:
-            fprintf(file, "OP_LOAD_2B");
-            break;
-        case OP_LOAD_4B:
-            fprintf(file, "OP_LOAD_4B");
-            break;
-        case OP_LOAD_8B:
-            fprintf(file, "OP_LOAD_8B");
+        case OP_LOAD_VALUE:
+            fprintf(file, "OP_LOAD_VALUE");
             break;
         case OP_ADD:
             fprintf(file, "OP_ADD");
@@ -56,6 +50,10 @@ Code code_new() {
         .length = 0,
         .capacity = 0
     };
+}
+
+void code_destruct(Code self) {
+    free(self.data);
 }
 
 void code_push(Code* self, Opcode opcode) {

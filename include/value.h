@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdio.h>
+#include <stdint.h>
+
 typedef enum ValueType {
     VALUE_INT
 } ValueType;
@@ -11,6 +14,13 @@ typedef struct Value {
     } as;
 } Value;
 
+Value value_new_int(uint64_t n);
+
+void value_fprint(FILE* file, Value self);
+void value_fprintln(FILE* file, Value self);
+void value_print(Value self);
+void value_println(Value self);
+
 typedef struct ValueArray {
     Value* data;
     size_t length;
@@ -18,4 +28,6 @@ typedef struct ValueArray {
 } ValueArray;
 
 ValueArray value_array_new();
+void value_array_destruct(ValueArray self);
+
 void value_array_push(ValueArray* self, Value value);

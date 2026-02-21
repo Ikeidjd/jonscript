@@ -39,30 +39,8 @@ static void comp_int(Chunk* self, NodeArray* nodes, NodeInt* node) {
     uint64_t number = atoi(node->value.text);
     node->value.text[node->value.text_len] = temp;
 
-    byte bytes[8];
-    int byte_count = 1;
-    for(size_t i = 0; i < 8; i++) {
-        bytes[i] = (number & ((uint64_t) 0xFF << (i * 8)));
-        if(bytes[i] != 0 && i >= byte_count) byte_count *= 2;
-    }
-
-    Opcode opcode;
-    switch(byte_count) {
-        case 1:
-            opcode = OP_LOAD_1B;
-            break;
-        case 2:
-            opcode = OP_LOAD_2B;
-            break;
-        case 4:
-            opcode = OP_LOAD_4B;
-            break;
-        case 8:
-            opcode = OP_LOAD_8B;
-            break;
-    }
-
-    code_push_args(&self->code, opcode, byte_count, bytes);
+    if(number <= 0xFF) code_push_args(&self->code, OP_LOAD_BYTE, 1, (byte[]) {(byte) number});
+    else chunk_emit_load_value_op(self, value_new_int(number));
 }
 
 static void comp(Chunk* self, NodeArray* nodes, size_t index) {
