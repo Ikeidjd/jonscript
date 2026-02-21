@@ -1,0 +1,68 @@
+int[] array = {0, 1, 2, 3};
+
+int[str] dict = {
+    "name": "Jon",
+    "last_name": "Arbuckle"
+};
+
+class Person : ToStr {
+    str name { public get; }
+    str last_name { public get; }
+
+    Self new() {
+        Self.new("Jon", "Arbuckle")
+    }
+
+    Self new(str name, str last_name) {
+        Self {
+            name = name,
+            last_name = last_name
+        }
+    }
+
+    override str to_str() {
+        f"Person(name = {self.name}, last_name = {self.last_name})"
+    }
+}
+
+class Student : Person {
+    int school_id;
+    char grade;
+
+    Self new() {
+        Self {
+            base = Base.new(),
+            school_id = -1,
+            grade = F
+        }
+    }
+
+    Self new(str name, str last_name, int school_id, char grade) {
+        Self {
+            base = Base.new(name, last_name),
+            school_id = school_id,
+            grade = grade
+        }
+    }
+
+    override str to_str() {
+        f"Student(name = {self.name}, last_name = {self.last_name}, school_id = {self.school_id}, grade = {grade})"
+    }
+}
+
+Person[] people = {
+    Person.new(),
+    Person.new("Tom", "Brady"),
+    Person.new("Wilson", "Higgsbury"),
+    Student.new(),
+    Student.new("Wendy", "Carter", 6, 'A'),
+    Student.new("Evan", "Burger", 7, 'C')
+};
+
+for(Person person in people) {
+    println(person);
+}
+
+for(int i = people.len - 1; i >= 0; i--) {
+    print(person .. ' ')
+}
