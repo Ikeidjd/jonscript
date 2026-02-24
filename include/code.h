@@ -7,6 +7,7 @@ typedef unsigned char byte;
 typedef enum Opcode {
     OP_LOAD_BYTE,
     OP_LOAD_VALUE,
+    OP_LOAD_STACK,
     OP_ADD,
     OP_SUB,
     OP_MUL,

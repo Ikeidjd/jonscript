@@ -3,13 +3,28 @@
 #include <stdio.h>
 
 typedef enum TokenType {
+    // End of file
+    TOKEN_EOF,
+
+    // Literals
     TOKEN_INT,
+
+    // Operators
     TOKEN_PLUS,
     TOKEN_MINUS,
     TOKEN_MULT,
     TOKEN_DIV,
     TOKEN_MOD,
-    TOKEN_EOF
+    TOKEN_EQUAL,
+
+    // Symbols
+    TOKEN_SEMICOLON,
+    TOKEN_BRACKET_LEFT,
+    TOKEN_BRACKET_RIGHT,
+
+    // Identifiers and keywords
+    TOKEN_IDENTIFIER,
+    TOKEN_KEYWORD_INT
 } TokenType;
 
 typedef struct Token {
@@ -27,15 +42,15 @@ typedef struct TokenArray {
     size_t capacity;
 } TokenArray;
 
-void token_fprint(FILE* file, Token token);
-void token_fprintln(FILE* file, Token token);
-void token_print(Token token);
-void token_println(Token token);
+void token_fprint(FILE* file, Token self);
+void token_fprintln(FILE* file, Token self);
+void token_print(Token self);
+void token_println(Token self);
 
-void token_type_fprint(FILE* file, TokenType type);
-void token_type_fprintln(FILE* file, TokenType type);
-void token_type_print(TokenType type);
-void token_type_println(TokenType type);
+void token_type_fprint(FILE* file, TokenType self);
+void token_type_fprintln(FILE* file, TokenType self);
+void token_type_print(TokenType self);
+void token_type_println(TokenType self);
 
 TokenArray token_array_new(char* string_data); // This takes ownership of string_data
 void token_array_push(TokenArray* self, Token token);

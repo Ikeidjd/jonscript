@@ -7,22 +7,33 @@
 #include "vm.h"
 
 int main() {
-    TokenArray tokens = lex("res/main.jon");
+    bool had_error;
+    NodeArray nodes = node_array_new();
+    Chunk chunk = chunk_new();
+
+    TokenArray tokens = lex("res/main.jon", &had_error);
+    if(had_error) goto End;
     for(int i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
     printf("\n");
 
-    NodeArray nodes = parse(&tokens);
+    nodes = parse(&tokens, &had_error);
+    if(had_error) goto End;
     node_array_println(&nodes);
     printf("\n");
 
-    printf("%d\n\n", analyze(&nodes));
+    analyze(&nodes, &had_error);
+    if(had_error) goto End;
+    node_array_println(&nodes);
+    printf("\n");
 
-    Chunk chunk = compile(&nodes);
+    chunk = compile(&nodes, &had_error);
+    if(had_error) goto End;
     chunk_disassemble(&chunk);
     printf("\n");
 
     run(&chunk);
 
+    End:
     token_array_destruct(tokens);
     node_array_destruct(nodes);
     chunk_destruct(chunk);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "node.h"
 
-int analyze(NodeArray* nodes);
+void analyze(NodeArray* nodes, bool* had_error);

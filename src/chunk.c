@@ -43,12 +43,12 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
     switch(op) {
         case OP_LOAD_BYTE: return chunk_display_load_op(self, op, 1, offset);
         case OP_LOAD_VALUE: return chunk_display_load_op(self, op, 2, offset);
+        case OP_LOAD_STACK: return chunk_display_load_op(self, op, 2, offset);
         case OP_ADD: return chunk_display_simple_op(op, offset);
         case OP_SUB: return chunk_display_simple_op(op, offset);
         case OP_MUL: return chunk_display_simple_op(op, offset);
         case OP_DIV: return chunk_display_simple_op(op, offset);
         case OP_MOD: return chunk_display_simple_op(op, offset);
-        default: return chunk_display_simple_op(op, offset);
     }
 }
 

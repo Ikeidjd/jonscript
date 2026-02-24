@@ -10,6 +10,9 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_LOAD_VALUE:
             fprintf(file, "OP_LOAD_VALUE");
             break;
+        case OP_LOAD_STACK:
+            fprintf(file, "OP_LOAD_STACK");
+            break;
         case OP_ADD:
             fprintf(file, "OP_ADD");
             break;

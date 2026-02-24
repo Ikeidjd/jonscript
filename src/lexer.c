@@ -24,7 +24,19 @@ typedef enum LexerError {
 
 // Remember to free() returned buffer
 static char* read_file(const char* filepath) {
-    FILE* file = fopen(filepath, "r");
+    /*
+    I HATE CRLF. So, an error happened when I tried to read a file with more than one line. The final char was -51. WHAT?
+    So, what I think happened is it was giving me the length while counting \r as a character, but then when reading, it was ignoring \r, therefore reading an extra char. WHY?
+    I'm not entirely sure if it was that, but I don't think it could be anything else.
+    Anyway, I remember having had some trouble with stuff like this in C++ a while back, so that's how I got the idea.
+    Changing the file mode to rb seems to have fixed it. I guess it's actually reading the \r now, AS IT SHOULD.
+    Or if you're gonna ignore it, AT LEAST BE CONSISTENT AND ALWAYS IGNORE IT.
+    Anyway, I'm actually a genius for figuring it out. Albert Einstein's got nothing on my huge brain.
+    No debugger btw, just brains and printf("HERE\n");, as God intended (I actually just couldn't figure out how to configure a debugger :/).
+
+    Actually, I just checked and it was totally what I thought, 100%. When printing the read characters one by one (as integers, to check properly), there is no \r. I'm truly goated.
+    */
+    FILE* file = fopen(filepath, "rb");
 
     fseek(file, 0, SEEK_END);
     size_t length = ftell(file);
@@ -33,7 +45,7 @@ static char* read_file(const char* filepath) {
     char* buffer = (char*) malloc(length + 1);
     buffer[length] = '\0';
 
-    fread(buffer, 1, length, file);
+    fread(buffer, sizeof(char), length, file);
     fclose(file);
 
     return buffer;
@@ -56,10 +68,6 @@ static char lexer_start_cur_char(Lexer* self) {
     return self->tokens.string_data[self->start_cur];
 }
 
-static char lexer_peek(Lexer* self) {
-    return self->tokens.string_data[self->cur];
-}
-
 static void lexer_error(Lexer* self, LexerError error) {
     self->had_error = true;
     switch(error) {
@@ -71,6 +79,14 @@ static void lexer_error(Lexer* self, LexerError error) {
             break;
     }
     fprintf(stderr, " at line %d, pos %d.\n", self->start_line, self->start_pos);
+}
+
+static char lexer_prev(Lexer* self) {
+    return self->tokens.string_data[self->cur - 1];
+}
+
+static char lexer_peek(Lexer* self) {
+    return self->tokens.string_data[self->cur];
 }
 
 static char lexer_advance(Lexer* self) {
@@ -87,7 +103,9 @@ static char lexer_advance(Lexer* self) {
 }
 
 static void lexer_skip_whitespace(Lexer* self) {
-    while(isspace(lexer_peek(self))) lexer_advance(self);
+    while(isspace(lexer_peek(self))) {
+        lexer_advance(self);
+    }
 }
 
 static void lexer_update_start_indices(Lexer* self) {
@@ -114,6 +132,28 @@ static void lexer_add_int_token(Lexer* self) {
     lexer_add_token(self, TOKEN_INT);
 }
 
+static bool lexer_add_keyword_token(Lexer* self, size_t length, char* expected, TokenType type) {
+    if(length == 0 && isalpha(lexer_peek(self))) return false;
+
+    for(size_t i = 0; i < length; i++) {
+        if(lexer_peek(self) != expected[i]) return false;
+        lexer_advance(self);
+    }
+
+    lexer_add_token(self, type);
+    return true;
+}
+
+static void lexer_add_identifier_token(Lexer* self) {
+    switch(lexer_prev(self)) {
+    case 'i':
+        if(lexer_add_keyword_token(self, 2, "nt", TOKEN_KEYWORD_INT)) return;
+        break;
+    }
+    while(isalpha(lexer_peek(self))) lexer_advance(self);
+    lexer_add_token(self, TOKEN_IDENTIFIER);
+}
+
 static void lexer_add_next_token(Lexer* self) {
     lexer_skip_whitespace(self);
     lexer_update_start_indices(self);
@@ -134,19 +174,35 @@ static void lexer_add_next_token(Lexer* self) {
         case '%':
             lexer_add_token(self, TOKEN_MOD);
             break;
+        case '=':
+            lexer_add_token(self, TOKEN_EQUAL);
+            break;
+        case ';':
+            lexer_add_token(self, TOKEN_SEMICOLON);
+            break;
+        case '[':
+            lexer_add_token(self, TOKEN_BRACKET_LEFT);
+            break;
+        case ']':
+            lexer_add_token(self, TOKEN_BRACKET_RIGHT);
+            break;
+        case '\0':
+            break;
         default:
             if(isdigit(c)) lexer_add_int_token(self);
+            else if(isalpha(c)) lexer_add_identifier_token(self);
             else lexer_error(self, LEXER_INVALID_CHARACTER);
             break;
     }
 }
 
-TokenArray lex(const char* filepath) {
+TokenArray lex(const char* filepath, bool* had_error) {
     Lexer self = lexer_new(filepath);
 
     while(lexer_peek(&self) != '\0') lexer_add_next_token(&self);
     lexer_update_start_indices(&self);
     lexer_add_token(&self, TOKEN_EOF);
 
+    *had_error = self.had_error;
     return self.had_error ? token_array_new(NULL) : self.tokens;
 }

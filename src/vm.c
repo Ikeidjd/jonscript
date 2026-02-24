@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define STACK_SIZE 0x10000
+#include "stack.h"
 
 typedef struct VM {
     size_t sp;
@@ -50,11 +50,18 @@ do { \
             case OP_LOAD_BYTE:
                 vm_push(self, value_new_int((uint64_t) READ()));
                 break;
-            case OP_LOAD_VALUE:
+            case OP_LOAD_VALUE: {
                 size_t index = READ();
                 index |= (READ() << 8);
                 vm_push(self, chunk->values.data[index]);
                 break;
+            }
+            case OP_LOAD_STACK: {
+                size_t index = READ();
+                index |= (READ() << 8);
+                vm_push(self, self->stack[index]);
+                break;
+            }
             case OP_ADD:
                 BIN_OP(+);
                 break;
@@ -69,9 +76,6 @@ do { \
                 break;
             case OP_MOD:
                 BIN_OP(%);
-                break;
-            default:
-                fprintf(stderr, "Unknown Opcode %d\n", op);
                 break;
         }
     }

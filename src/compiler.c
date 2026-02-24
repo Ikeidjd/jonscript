@@ -5,9 +5,17 @@
 
 static void comp(Chunk* self, NodeArray* nodes, size_t index);
 
+static void comp_program(Chunk* self, NodeArray* nodes, NodeProgram* node) {
+    for(size_t i = 0; i < node->length; i++) comp(self, nodes, node->data[i]);
+}
+
+static void comp_var_decl(Chunk* self, NodeArray* nodes, NodeVarDecl* node) {
+    comp(self, nodes, node->value_index);
+}
+
 static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
-    comp(self, nodes, node->left);
-    comp(self, nodes, node->right);
+    comp(self, nodes, node->left_index);
+    comp(self, nodes, node->right_index);
 
     switch(node->op.type) {
         case TOKEN_PLUS:
@@ -33,6 +41,11 @@ static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
     }
 }
 
+static void comp_var(Chunk* self, NodeArray* nodes, NodeVar* node) {
+    size_t index = node->stack_index;
+    code_push_args(&self->code, OP_LOAD_STACK, 2, (byte[]) {index & 0xFF, (index >> 8) & 0xFF});
+}
+
 static void comp_int(Chunk* self, NodeArray* nodes, NodeInt* node) {
     char temp = node->value.text[node->value.text_len];
     node->value.text[node->value.text_len] = '\0';
@@ -46,20 +59,27 @@ static void comp_int(Chunk* self, NodeArray* nodes, NodeInt* node) {
 static void comp(Chunk* self, NodeArray* nodes, size_t index) {
     Node* node = &nodes->data[index];
     switch(node->type) {
+        case NODE_PROGRAM:
+            comp_program(self, nodes, &node->as.program);
+            break;
+        case NODE_VAR_DECL:
+            comp_var_decl(self, nodes, &node->as.var_decl);
+            break;
         case NODE_BIN_OP:
             comp_bin_op(self, nodes, &node->as.bin_op);
+            break;
+        case NODE_VAR:
+            comp_var(self, nodes, &node->as.var);
             break;
         case NODE_INT:
             comp_int(self, nodes, &node->as.int_literal);
             break;
-        default:
-            fprintf(stderr, "Unknown NodeType %d\n", node->type);
-            break;
     }
 }
 
-Chunk compile(NodeArray* nodes) {
+Chunk compile(NodeArray* nodes, bool* had_error) {
     Chunk chunk = chunk_new();
     comp(&chunk, nodes, nodes->root);
+    *had_error = false;
     return chunk;
 }
