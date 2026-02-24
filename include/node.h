@@ -60,10 +60,9 @@ typedef struct NodeArray {
 
 NodeArray node_array_new();
 void node_array_destruct(NodeArray self);
-Node* node_array_push(NodeArray* self, NodeType type);
-size_t node_array_get_index(NodeArray* self, Node* node);
+size_t node_array_push(NodeArray* self, NodeType type);
 
-void node_fprintln(FILE* file, NodeArray* array, size_t index, int indentation);
+void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentation);
 void node_println(NodeArray* array, size_t index);
 
 void node_array_fprintln(FILE* file, NodeArray* self);

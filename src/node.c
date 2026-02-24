@@ -19,17 +19,13 @@ void node_array_destruct(NodeArray self) {
     free(self.data);
 }
 
-Node* node_array_push(NodeArray* self, NodeType type) {
+size_t node_array_push(NodeArray* self, NodeType type) {
     PUSH(self, (Node) { .type = type }, 16);
-    return &self->data[self->length - 1];
+    return self->length - 1;
 }
 
-size_t node_array_get_index(NodeArray* self, Node* node) {
-    return node - self->data;
-}
-
-void node_fprintln(FILE* file, NodeArray* array, size_t index, int indentation) {
-    for(int i = 0; i < indentation; i++) fprintf(file, " ");
+void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentation) {
+    for(size_t i = 0; i < indentation; i++) fprintf(file, " ");
     Node* base_node = &array->data[index];
     switch(base_node->type) {
         case NODE_PROGRAM: {

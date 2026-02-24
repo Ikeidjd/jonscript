@@ -74,9 +74,6 @@ static void lexer_error(Lexer* self, LexerError error) {
         case LEXER_INVALID_CHARACTER:
             fprintf(stderr, "Invalid character '%c'", lexer_start_cur_char(self));
             break;
-        default:
-            fprintf(stderr, "Unknown LexerError %d", (int) error);
-            break;
     }
     fprintf(stderr, " at line %d, pos %d.\n", self->start_line, self->start_pos);
 }
@@ -180,11 +177,23 @@ static void lexer_add_next_token(Lexer* self) {
         case ';':
             lexer_add_token(self, TOKEN_SEMICOLON);
             break;
+        case '(':
+            lexer_add_token(self, TOKEN_PAREN_LEFT);
+            break;
+        case ')':
+            lexer_add_token(self, TOKEN_PAREN_RIGHT);
+            break;
         case '[':
             lexer_add_token(self, TOKEN_BRACKET_LEFT);
             break;
         case ']':
             lexer_add_token(self, TOKEN_BRACKET_RIGHT);
+            break;
+        case '{':
+            lexer_add_token(self, TOKEN_BRACE_LEFT);
+            break;
+        case '}':
+            lexer_add_token(self, TOKEN_BRACE_RIGHT);
             break;
         case '\0':
             break;

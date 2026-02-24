@@ -28,9 +28,6 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_MOD:
             fprintf(file, "OP_MOD");
             break;
-        default:
-            fprintf(file, "Unknown Opcode %d", self);
-            break;
     }
 }
 

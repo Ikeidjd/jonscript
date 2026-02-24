@@ -10,9 +10,6 @@ void type_fprint(FILE* file, Type* self) {
         case TTYPE_ARRAY:
             array_type_fprint(file, (ArrayType*) self);
             break;
-        default:
-            fprintf(file, "Unknown TypeType %d", (int) self->type);
-            break;
     }
 }
 
@@ -33,9 +30,6 @@ void primitive_type_fprint(FILE* file, PrimitiveTypeObj* self) {
     switch(self->type) {
         case TYPE_INT:
             fprintf(file, "int");
-            break;
-        default:
-            fprintf(file, "Unknown PrimitiveType %d", (int) self->type);
             break;
     }
 }

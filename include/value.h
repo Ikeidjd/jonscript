@@ -10,11 +10,11 @@ typedef enum ValueType {
 typedef struct Value {
     ValueType type;
     union {
-        int integer;
+        int64_t integer;
     } as;
 } Value;
 
-Value value_new_int(uint64_t n);
+Value value_new_int(int64_t n);
 
 void value_fprint(FILE* file, Value self);
 void value_fprintln(FILE* file, Value self);

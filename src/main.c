@@ -13,7 +13,7 @@ int main() {
 
     TokenArray tokens = lex("res/main.jon", &had_error);
     if(had_error) goto End;
-    for(int i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
+    for(size_t i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
     printf("\n");
 
     nodes = parse(&tokens, &had_error);

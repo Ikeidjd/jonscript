@@ -19,8 +19,12 @@ typedef enum TokenType {
 
     // Symbols
     TOKEN_SEMICOLON,
+    TOKEN_PAREN_LEFT,
+    TOKEN_PAREN_RIGHT,
     TOKEN_BRACKET_LEFT,
     TOKEN_BRACKET_RIGHT,
+    TOKEN_BRACE_LEFT,
+    TOKEN_BRACE_RIGHT,
 
     // Identifiers and keywords
     TOKEN_IDENTIFIER,

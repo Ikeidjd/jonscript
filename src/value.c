@@ -2,7 +2,7 @@
 
 #include "dynamic_array.h"
 
-Value value_new_int(uint64_t n) {
+Value value_new_int(int64_t n) {
     return (Value) {
         .type = VALUE_INT,
         .as.integer = n
@@ -12,7 +12,7 @@ Value value_new_int(uint64_t n) {
 void value_fprint(FILE* file, Value self) {
     switch(self.type) {
         case VALUE_INT:
-            fprintf(file, "%d", self.as.integer);
+            fprintf(file, "%lld", self.as.integer);
             break;
         default:
             fprintf(file, "Unknown ValueType %d", self.type);

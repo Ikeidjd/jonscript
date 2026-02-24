@@ -9,38 +9,58 @@
 
 #include "parser_helper.c"
 
+#define GET(node) self->nodes.data[node]
+
 typedef enum Precedence {
     PREC_NONE,
     PREC_ADD,
     PREC_MUL
 } Precedence;
 
-static Precedence precs[] = {
-    [TOKEN_INT] = PREC_NONE,
-    [TOKEN_PLUS] = PREC_ADD,
-    [TOKEN_MINUS] = PREC_ADD,
-    [TOKEN_MULT] = PREC_MUL,
-    [TOKEN_DIV] = PREC_MUL,
-    [TOKEN_MOD] = PREC_MUL,
-    [TOKEN_EOF] = PREC_NONE
-};
-
 static Precedence parser_get_cur_prec(Parser* self) {
-    return precs[parser_peek(self).type];
+    switch(parser_peek(self).type) {
+        case TOKEN_PLUS:
+        case TOKEN_MINUS:
+            return PREC_ADD;
+        case TOKEN_MULT:
+        case TOKEN_DIV:
+        case TOKEN_MOD:
+            return PREC_MUL;
+        case TOKEN_EOF:
+        case TOKEN_INT:
+        case TOKEN_EQUAL:
+        case TOKEN_SEMICOLON:
+        case TOKEN_PAREN_LEFT:
+        case TOKEN_PAREN_RIGHT:
+        case TOKEN_BRACKET_LEFT:
+        case TOKEN_BRACKET_RIGHT:
+        case TOKEN_BRACE_LEFT:
+        case TOKEN_BRACE_RIGHT:
+        case TOKEN_IDENTIFIER:
+        case TOKEN_KEYWORD_INT:
+            return PREC_NONE;
+    }
 }
 
-static size_t parser_prefix_expr(Parser* self) {
+static size_t parse_expr(Parser* self);
+
+static size_t parse_prefix_expr(Parser* self) {
     Token token = parser_advance(self);
     switch(token.type) {
         case TOKEN_INT: {
-            Node* node = node_array_push(&self->nodes, NODE_INT);
-            node->as.int_literal.value = token;
-            return node_array_get_index(&self->nodes, node);
+            size_t node = node_array_push(&self->nodes, NODE_INT);
+            GET(node).as.int_literal.value = token;
+            return node;
+        }
+        case TOKEN_PAREN_LEFT: {
+            size_t expr = parse_expr(self);
+            parser_consume(self, TOKEN_PAREN_RIGHT, "')'");
+            return expr;
         }
         case TOKEN_IDENTIFIER: {
-            Node* node = node_array_push(&self->nodes, NODE_VAR);
-            node->as.var.name = token;
-            return node_array_get_index(&self->nodes, node);
+            size_t node = node_array_push(&self->nodes, NODE_VAR);
+            GET(node).as.var.name = token;
+            return node;
         }
         default:
             parser_error_string(self, "expression");
@@ -48,26 +68,31 @@ static size_t parser_prefix_expr(Parser* self) {
     }
 }
 
-static size_t parser_expr(Parser* self, Precedence prev_prec) {
-    size_t node_index = parser_prefix_expr(self);
+static size_t parse_precedence(Parser* self, Precedence prev_prec) {
+    size_t node = parse_prefix_expr(self);
     if(self->panic_mode) return 0;
     Precedence cur_prec = parser_get_cur_prec(self);
 
     while(cur_prec > prev_prec) {
-        Node* node = node_array_push(&self->nodes, NODE_BIN_OP);
+        size_t node_next = node_array_push(&self->nodes, NODE_BIN_OP);
 
-        node->as.bin_op.left_index = node_index;
-        node->as.bin_op.op = parser_advance(self);
-        node->as.bin_op.right_index = parser_expr(self, cur_prec);
+        GET(node_next).as.bin_op.left_index = node;
+        GET(node_next).as.bin_op.op = parser_advance(self);
+        GET(node_next).as.bin_op.right_index = parse_precedence(self, cur_prec);
+        if(self->panic_mode) return 0;
 
-        node_index = node_array_get_index(&self->nodes, node);
+        node = node_next;
         cur_prec = parser_get_cur_prec(self);
     }
 
-    return node_index;
+    return node;
 }
 
-static Type* parser_type(Parser* self) {
+static size_t parse_expr(Parser* self) {
+    return parse_precedence(self, PREC_NONE);
+}
+
+static Type* parse_type(Parser* self) {
     parser_consume(self, TOKEN_KEYWORD_INT, "type");
     if(self->panic_mode) return NULL;
 
@@ -82,49 +107,51 @@ static Type* parser_type(Parser* self) {
     return type;
 }
 
-static size_t parser_decl(Parser* self) {
-    Type* type = parser_type(self);
+static size_t parse_decl(Parser* self) {
+    // Oh God... I have been operating under the assumption that self->nodes wasn't gonna get resized in the middle of the function and therefore invalidate Node* node, but that's wrong ._.
+    // I'll have to modify node_array_push to return an index now and I'll have to always work with indices (during parsing, anyway)
+    Type* type = parse_type(self);
     if(self->panic_mode) return 0;
 
-    Node* node = node_array_push(&self->nodes, NODE_VAR_DECL);
-    node->as.var_decl.type = type;
+    size_t node = node_array_push(&self->nodes, NODE_VAR_DECL);
+    GET(node).as.var_decl.type = type;
 
-    node->as.var_decl.name = parser_consume(self, TOKEN_IDENTIFIER, "identifier");
+    GET(node).as.var_decl.name = parser_consume(self, TOKEN_IDENTIFIER, "identifier");
     if(self->panic_mode) return 0;
 
-    node->as.var_decl.equals = parser_consume(self, TOKEN_EQUAL, "=");
+    GET(node).as.var_decl.equals = parser_consume(self, TOKEN_EQUAL, "=");
     if(self->panic_mode) return 0;
 
-    node->as.var_decl.value_index = parser_expr(self, PREC_NONE);
+    GET(node).as.var_decl.value_index = parse_expr(self);
     if(self->panic_mode) return 0;
 
     parser_consume(self, TOKEN_SEMICOLON, "';'");
     if(self->panic_mode) return 0;
 
-    return node_array_get_index(&self->nodes, node);
+    return node;
 }
 
-static size_t parser_program(Parser* self) {
-    Node* node = node_array_push(&self->nodes, NODE_PROGRAM);
-    node->as.program = (NodeProgram) {
+static size_t parse_program(Parser* self) {
+    size_t node = node_array_push(&self->nodes, NODE_PROGRAM);
+    GET(node).as.program = (NodeProgram) {
         .data = NULL,
         .length = 0,
         .capacity = 0
     };
 
     while(!parser_matches(self, TOKEN_EOF)) {
-        size_t index = parser_decl(self);
+        size_t index = parse_decl(self);
         if(self->panic_mode) parser_sync(self);
-        else PUSH(&node->as.program, index, 16);
+        else PUSH(&GET(node).as.program, index, 16);
     }
 
-    return node_array_get_index(&self->nodes, node);
+    return node;
 }
 
 NodeArray parse(const TokenArray* tokens, bool* had_error) {
     Parser self = parser_new(tokens);
 
-    self.nodes.root = parser_program(&self);
+    self.nodes.root = parse_program(&self);
     *had_error = self.had_error;
 
     return self.nodes;

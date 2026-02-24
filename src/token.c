@@ -53,20 +53,29 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_SEMICOLON:
             fprintf(file, "TOKEN_SEMICOLON");
             break;
+        case TOKEN_PAREN_LEFT:
+            fprintf(file, "TOKEN_PAREN_LEFT");
+            break;
+        case TOKEN_PAREN_RIGHT:
+            fprintf(file, "TOKEN_PAREN_RIGHT");
+            break;
         case TOKEN_BRACKET_LEFT:
             fprintf(file, "TOKEN_BRACKET_LEFT");
             break;
         case TOKEN_BRACKET_RIGHT:
             fprintf(file, "TOKEN_BRACKET_RIGHT");
             break;
+        case TOKEN_BRACE_LEFT:
+            fprintf(file, "TOKEN_BRACE_LEFT");
+            break;
+        case TOKEN_BRACE_RIGHT:
+            fprintf(file, "TOKEN_BRACE_RIGHT");
+            break;
         case TOKEN_IDENTIFIER:
             fprintf(file, "TOKEN_IDENTIFIER");
             break;
         case TOKEN_KEYWORD_INT:
             fprintf(file, "TOKEN_KEYWORD_INT");
-            break;
-        default:
-            fprintf(file, "Unknown TokenType %d", (int) self);
             break;
     }
 }

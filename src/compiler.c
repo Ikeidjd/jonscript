@@ -49,7 +49,7 @@ static void comp_var(Chunk* self, NodeArray* nodes, NodeVar* node) {
 static void comp_int(Chunk* self, NodeArray* nodes, NodeInt* node) {
     char temp = node->value.text[node->value.text_len];
     node->value.text[node->value.text_len] = '\0';
-    uint64_t number = atoi(node->value.text);
+    int64_t number = atoi(node->value.text);
     node->value.text[node->value.text_len] = temp;
 
     if(number <= 0xFF) code_push_args(&self->code, OP_LOAD_BYTE, 1, (byte[]) {(byte) number});
