@@ -2,6 +2,18 @@
 
 #include <stdlib.h>
 
+#define DYNAMIC_ARRAY_NEW(type) \
+    (type) { \
+        .data = NULL, \
+        .length = 0, \
+        .capacity = 0 \
+    }
+
+#define DYNAMIC_ARRAY_NEW_PARTIAL() \
+    .data = NULL, \
+    .length = 0, \
+    .capacity = 0
+
 #define PUSH(array, value, initial_capacity) \
     do { \
         if((array)->capacity <= (array)->length) { \

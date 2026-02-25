@@ -32,10 +32,10 @@ typedef struct {
     PrimitiveType type;
 } PrimitiveTypeObj;
 
-void primitive_type_fprint(FILE* file, PrimitiveTypeObj* self);
-void primitive_type_fprintln(FILE* file, PrimitiveTypeObj* self);
-void primitive_type_print(PrimitiveTypeObj* self);
-void primitive_type_println(PrimitiveTypeObj* self);
+void primitive_type_fprint(FILE* file, PrimitiveType self);
+void primitive_type_fprintln(FILE* file, PrimitiveType self);
+void primitive_type_print(PrimitiveType self);
+void primitive_type_println(PrimitiveType self);
 
 typedef struct ArrayType {
     Type base;
@@ -75,3 +75,4 @@ PrimitiveTypeObj* primitive_type_new(TypeHashSet* set, PrimitiveType type);
 ArrayType* array_type_new(TypeHashSet* set, Type* type);
 
 bool is_primitive(Type* self, PrimitiveType type);
+bool is_array(Type* self);

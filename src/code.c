@@ -10,8 +10,23 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_LOAD_VALUE:
             fprintf(file, "OP_LOAD_VALUE");
             break;
-        case OP_LOAD_STACK:
-            fprintf(file, "OP_LOAD_STACK");
+        case OP_LOCAL_GET:
+            fprintf(file, "OP_LOCAL_GET");
+            break;
+        case OP_LOCAL_SET:
+            fprintf(file, "OP_LOCAL_SET");
+            break;
+        case OP_INDEX_GET:
+            fprintf(file, "OP_INDEX_GET");
+            break;
+        case OP_INDEX_SET:
+            fprintf(file, "OP_INDEX_SET");
+            break;
+        case OP_ARRAYIFY_LIST:
+            fprintf(file, "OP_ARRAYIFY_LIST");
+            break;
+        case OP_ARRAYIFY_LENGTH:
+            fprintf(file, "OP_ARRAYIFY_LENGTH");
             break;
         case OP_ADD:
             fprintf(file, "OP_ADD");
@@ -45,11 +60,7 @@ void opcode_println(Opcode self) {
 }
 
 Code code_new() {
-    return (Code) {
-        .data = NULL,
-        .length = 0,
-        .capacity = 0
-    };
+    return DYNAMIC_ARRAY_NEW(Code);
 }
 
 void code_destruct(Code self) {

@@ -4,10 +4,20 @@
 
 typedef unsigned char byte;
 
+#define TO_LE_2_BYTES(n) (byte[]) {(n) & 0xFF, ((n) >> 8) & 0xFF}
+
 typedef enum Opcode {
     OP_LOAD_BYTE,
     OP_LOAD_VALUE,
-    OP_LOAD_STACK,
+
+    OP_LOCAL_GET,
+    OP_LOCAL_SET,
+    OP_INDEX_GET,
+    OP_INDEX_SET,
+
+    OP_ARRAYIFY_LIST,
+    OP_ARRAYIFY_LENGTH,
+
     OP_ADD,
     OP_SUB,
     OP_MUL,

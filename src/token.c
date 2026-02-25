@@ -50,6 +50,12 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_EQUAL:
             fprintf(file, "TOKEN_EQUAL");
             break;
+        case TOKEN_COMMA:
+            fprintf(file, "TOKEN_COMMA");
+            break;
+        case TOKEN_COLON:
+            fprintf(file, "TOKEN_COLON");
+            break;
         case TOKEN_SEMICOLON:
             fprintf(file, "TOKEN_SEMICOLON");
             break;
@@ -74,6 +80,12 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_IDENTIFIER:
             fprintf(file, "TOKEN_IDENTIFIER");
             break;
+        case TOKEN_KEYWORD_LET:
+            fprintf(file, "TOKEN_KEYWORD_LET");
+            break;
+        case TOKEN_KEYWORD_MUT:
+            fprintf(file, "TOKEN_KEYWORD_MUT");
+            break;
         case TOKEN_KEYWORD_INT:
             fprintf(file, "TOKEN_KEYWORD_INT");
             break;
@@ -96,9 +108,7 @@ void token_type_println(TokenType self) {
 TokenArray token_array_new(char* string_data) {
     return (TokenArray) {
         .string_data = string_data,
-        .data = NULL,
-        .length = 0,
-        .capacity = 0
+        DYNAMIC_ARRAY_NEW_PARTIAL()
     };
 }
 

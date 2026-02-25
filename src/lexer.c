@@ -75,7 +75,7 @@ static void lexer_error(Lexer* self, LexerError error) {
             fprintf(stderr, "Invalid character '%c'", lexer_start_cur_char(self));
             break;
     }
-    fprintf(stderr, " at line %d, pos %d.\n", self->start_line, self->start_pos);
+    fprintf(stderr, " on line %d, pos %d.\n", self->start_line, self->start_pos);
 }
 
 static char lexer_prev(Lexer* self) {
@@ -146,6 +146,12 @@ static void lexer_add_identifier_token(Lexer* self) {
     case 'i':
         if(lexer_add_keyword_token(self, 2, "nt", TOKEN_KEYWORD_INT)) return;
         break;
+    case 'l':
+        if(lexer_add_keyword_token(self, 2, "et", TOKEN_KEYWORD_LET)) return;
+        break;
+    case 'm':
+        if(lexer_add_keyword_token(self, 2, "ut", TOKEN_KEYWORD_MUT)) return;
+        break;
     }
     while(isalpha(lexer_peek(self))) lexer_advance(self);
     lexer_add_token(self, TOKEN_IDENTIFIER);
@@ -173,6 +179,12 @@ static void lexer_add_next_token(Lexer* self) {
             break;
         case '=':
             lexer_add_token(self, TOKEN_EQUAL);
+            break;
+        case ',':
+            lexer_add_token(self, TOKEN_COMMA);
+            break;
+        case ':':
+            lexer_add_token(self, TOKEN_COLON);
             break;
         case ';':
             lexer_add_token(self, TOKEN_SEMICOLON);

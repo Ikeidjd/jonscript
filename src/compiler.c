@@ -3,19 +3,24 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-static void comp(Chunk* self, NodeArray* nodes, size_t index);
+static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index);
 
 static void comp_program(Chunk* self, NodeArray* nodes, NodeProgram* node) {
     for(size_t i = 0; i < node->length; i++) comp(self, nodes, node->data[i]);
 }
 
 static void comp_var_decl(Chunk* self, NodeArray* nodes, NodeVarDecl* node) {
-    comp(self, nodes, node->value_index);
+    comp(self, nodes, node->value);
+}
+
+static void comp_assign_stat(Chunk* self, NodeArray* nodes, NodeAssignStat* node) {
+    comp(self, nodes, node->rvalue);
+    comp(self, nodes, node->lvalue);
 }
 
 static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
-    comp(self, nodes, node->left_index);
-    comp(self, nodes, node->right_index);
+    comp(self, nodes, node->left);
+    comp(self, nodes, node->right);
 
     switch(node->op.type) {
         case TOKEN_PLUS:
@@ -41,9 +46,25 @@ static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
     }
 }
 
+static void comp_index_op(Chunk* self, NodeArray* nodes, NodeIndexOp* node) {
+    comp(self, nodes, node->left);
+    comp(self, nodes, node->right);
+    code_push(&self->code, node->should_set ? OP_INDEX_SET : OP_INDEX_GET);
+}
+
 static void comp_var(Chunk* self, NodeArray* nodes, NodeVar* node) {
-    size_t index = node->stack_index;
-    code_push_args(&self->code, OP_LOAD_STACK, 2, (byte[]) {index & 0xFF, (index >> 8) & 0xFF});
+    code_push_args(&self->code, node->should_set ? OP_LOCAL_SET : OP_LOCAL_GET, 2, TO_LE_2_BYTES(node->stack_index));
+}
+
+static void comp_array_list_init(Chunk* self, NodeArray* nodes, NodeArrayListInit* node) {
+    for(size_t i = 0; i < node->length; i++) comp(self, nodes, node->data[i]);
+    code_push_args(&self->code, OP_ARRAYIFY_LIST, 2, TO_LE_2_BYTES(node->length));
+}
+
+static void comp_array_length_init(Chunk* self, NodeArray* nodes, NodeArrayLengthInit* node) {
+    comp(self, nodes, node->expr);
+    comp(self, nodes, node->length);
+    code_push(&self->code, OP_ARRAYIFY_LENGTH);
 }
 
 static void comp_int(Chunk* self, NodeArray* nodes, NodeInt* node) {
@@ -56,8 +77,8 @@ static void comp_int(Chunk* self, NodeArray* nodes, NodeInt* node) {
     else chunk_emit_load_value_op(self, value_new_int(number));
 }
 
-static void comp(Chunk* self, NodeArray* nodes, size_t index) {
-    Node* node = &nodes->data[index];
+static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index) {
+    Node* node = &nodes->data[node_index];
     switch(node->type) {
         case NODE_PROGRAM:
             comp_program(self, nodes, &node->as.program);
@@ -65,11 +86,23 @@ static void comp(Chunk* self, NodeArray* nodes, size_t index) {
         case NODE_VAR_DECL:
             comp_var_decl(self, nodes, &node->as.var_decl);
             break;
+        case NODE_ASSIGN_STAT:
+            comp_assign_stat(self, nodes, &node->as.assign_stat);
+            break;
         case NODE_BIN_OP:
             comp_bin_op(self, nodes, &node->as.bin_op);
             break;
+        case NODE_INDEX_OP:
+            comp_index_op(self, nodes, &node->as.index_op);
+            break;
         case NODE_VAR:
             comp_var(self, nodes, &node->as.var);
+            break;
+        case NODE_ARRAY_LIST_INIT:
+            comp_array_list_init(self, nodes, &node->as.array_list_init);
+            break;
+        case NODE_ARRAY_LENGTH_INIT:
+            comp_array_length_init(self, nodes, &node->as.array_length_init);
             break;
         case NODE_INT:
             comp_int(self, nodes, &node->as.int_literal);

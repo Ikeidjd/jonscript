@@ -119,3 +119,7 @@ ArrayType* array_type_new(TypeHashSet* set, Type* type) {
 bool is_primitive(Type* self, PrimitiveType type) {
     return self->hash == type;
 }
+
+bool is_array(Type* self) {
+    return self->type == TTYPE_ARRAY;
+}

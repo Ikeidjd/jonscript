@@ -1,5 +1,7 @@
 keywords = [
-    "int"
+    "int",
+    "let",
+    "mut"
 ]
 
 tab = "    "

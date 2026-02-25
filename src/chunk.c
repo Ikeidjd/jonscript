@@ -15,10 +15,10 @@ void chunk_destruct(Chunk chunk) {
 void chunk_emit_load_value_op(Chunk* self, Value value) {
     value_array_push(&self->values, value);
     size_t index = self->values.length - 1;
-    code_push_args(&self->code, OP_LOAD_VALUE, 2, (byte[]) {index & 0xFF, (index >> 8) & 0xFF});
+    code_push_args(&self->code, OP_LOAD_VALUE, 2, TO_LE_2_BYTES(index));
 }
 
-static size_t chunk_display_load_op(Chunk* self, Opcode op, size_t byte_count, size_t offset) {
+static size_t chunk_display_monoarg_op(Chunk* self, Opcode op, size_t byte_count, size_t offset) {
     opcode_print(op);
     offset++;
 
@@ -41,9 +41,14 @@ static size_t chunk_display_simple_op(Opcode op, size_t offset) {
 size_t chunk_disassemble_op(Chunk* self, size_t offset) {
     Opcode op = self->code.data[offset];
     switch(op) {
-        case OP_LOAD_BYTE: return chunk_display_load_op(self, op, 1, offset);
-        case OP_LOAD_VALUE: return chunk_display_load_op(self, op, 2, offset);
-        case OP_LOAD_STACK: return chunk_display_load_op(self, op, 2, offset);
+        case OP_LOAD_BYTE: return chunk_display_monoarg_op(self, op, 1, offset);
+        case OP_LOAD_VALUE: return chunk_display_monoarg_op(self, op, 2, offset);
+        case OP_LOCAL_GET: return chunk_display_monoarg_op(self, op, 2, offset);
+        case OP_LOCAL_SET: return chunk_display_monoarg_op(self, op, 2, offset);
+        case OP_INDEX_GET: return chunk_display_simple_op(op, offset);
+        case OP_INDEX_SET: return chunk_display_simple_op(op, offset);
+        case OP_ARRAYIFY_LIST: return chunk_display_monoarg_op(self, op, 2, offset);
+        case OP_ARRAYIFY_LENGTH: return chunk_display_simple_op(op, offset);
         case OP_ADD: return chunk_display_simple_op(op, offset);
         case OP_SUB: return chunk_display_simple_op(op, offset);
         case OP_MUL: return chunk_display_simple_op(op, offset);

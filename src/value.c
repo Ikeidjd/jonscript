@@ -9,13 +9,25 @@ Value value_new_int(int64_t n) {
     };
 }
 
+Value value_new_array(ValueArray* array) {
+    return (Value) {
+        .type = VALUE_ARRAY,
+        .as.array = array
+    };
+}
+
 void value_fprint(FILE* file, Value self) {
     switch(self.type) {
         case VALUE_INT:
             fprintf(file, "%lld", self.as.integer);
             break;
-        default:
-            fprintf(file, "Unknown ValueType %d", self.type);
+        case VALUE_ARRAY:
+            fprintf(file, "[");
+            for(size_t i = 0; i < self.as.array->length; i++) {
+                value_fprint(file, self.as.array->data[i]);
+                if(i + 1 < self.as.array->length) fprintf(file, ", ");
+            }
+            fprintf(file, "]");
             break;
     }
 }
@@ -34,11 +46,7 @@ void value_println(Value self) {
 }
 
 ValueArray value_array_new() {
-    return (ValueArray) {
-        .data = NULL,
-        .length = 0,
-        .capacity = 0
-    };
+    return DYNAMIC_ARRAY_NEW(ValueArray);
 }
 
 void value_array_destruct(ValueArray self) {

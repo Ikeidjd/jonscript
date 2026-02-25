@@ -5,9 +5,7 @@
 NodeArray node_array_new() {
     return (NodeArray) {
         .type_hash_set = type_hash_set_new(),
-        .data = NULL,
-        .length = 0,
-        .capacity = 0
+        DYNAMIC_ARRAY_NEW_PARTIAL()
     };
 }
 
@@ -15,6 +13,7 @@ void node_array_destruct(NodeArray self) {
     type_hash_set_destruct(self.type_hash_set);
     for(size_t i = 0; i < self.length; i++) {
         if(self.data[i].type == NODE_PROGRAM) free(self.data[i].as.program.data);
+        else if(self.data[i].type == NODE_ARRAY_LIST_INIT) free(self.data[i].as.array_list_init.data);
     }
     free(self.data);
 }
@@ -37,24 +36,51 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
         case NODE_VAR_DECL: {
             NodeVarDecl* node = &base_node->as.var_decl;
             fprintf(file, "NodeVarDecl: ");
-            type_fprint(file, node->type);
+            type_fprint(file, node->var_type);
             fprintf(file, " %.*s\n", node->name.text_len, node->name.text);
-            node_fprintln(file, array, node->value_index, indentation + 4);
+            node_fprintln(file, array, node->value, indentation + 4);
+            break;
+        }
+        case NODE_ASSIGN_STAT: {
+            NodeAssignStat* node = &base_node->as.assign_stat;
+            fprintf(file, "NodeAssignStat:\n");
+            node_fprintln(file, array, node->lvalue, indentation + 4);
+            node_fprintln(file, array, node->rvalue, indentation + 4);
             break;
         }
         case NODE_BIN_OP: {
             NodeBinOp* node = &base_node->as.bin_op;
             fprintf(file, "NodeBinOp: ");
             token_fprintln(file, node->op);
-            node_fprintln(file, array, node->left_index, indentation + 4);
-            node_fprintln(file, array, node->right_index, indentation + 4);
+            node_fprintln(file, array, node->left, indentation + 4);
+            node_fprintln(file, array, node->right, indentation + 4);
+            break;
+        }
+        case NODE_INDEX_OP: {
+            NodeIndexOp* node = &base_node->as.index_op;
+            fprintf(file, "NodeIndexOp: %s\n", node->should_set ? "SET" : "GET");
+            node_fprintln(file, array, node->left, indentation + 4);
+            node_fprintln(file, array, node->right, indentation + 4);
             break;
         }
         case NODE_VAR: {
             NodeVar* node = &base_node->as.var;
             fprintf(file, "NodeVar: ");
             token_fprint(file, node->name);
-            fprintf(file, " %d\n", node->stack_index);
+            fprintf(file, " %d %s\n", node->stack_index, node->should_set ? "SET" : "GET");
+            break;
+        }
+        case NODE_ARRAY_LIST_INIT: {
+            NodeArrayListInit* node = &base_node->as.array_list_init;
+            fprintf(file, "NodeArrayListInit: \n");
+            for(size_t i = 0; i < node->length; i++) node_fprintln(file, array, node->data[i], indentation + 4);
+            break;
+        }
+        case NODE_ARRAY_LENGTH_INIT: {
+            NodeArrayLengthInit* node = &base_node->as.array_length_init;
+            fprintf(file, "NodeArrayLengthInit: \n");
+            node_fprintln(file, array, node->expr, indentation + 4);
+            node_fprintln(file, array, node->length, indentation + 4);
             break;
         }
         case NODE_INT: {

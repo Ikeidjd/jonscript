@@ -34,6 +34,10 @@ static Token parser_advance(Parser* self) {
     return token;
 }
 
+static bool parser_peek_matches(Parser* self, TokenType expected) {
+    return expected == parser_peek(self).type;
+}
+
 static bool parser_matches(Parser* self, TokenType expected) {
     if(expected == parser_peek(self).type) {
         parser_advance(self);
@@ -54,7 +58,7 @@ static void parser_error_string(Parser* self, const char* expected) {
 
     fprintf(stderr, "Expected %s, but got ", expected);
     token_type_fprint(stderr, got.type);
-    fprintf(stderr, " at line %d, pos %d.\n", got.line, got.pos);
+    fprintf(stderr, " on line %d, pos %d.\n", got.line, got.pos);
 }
 
 static void parser_error_token_type(Parser* self, TokenType expected) {
@@ -66,7 +70,7 @@ static void parser_error_token_type(Parser* self, TokenType expected) {
     token_type_fprint(stderr, expected);
     fprintf(stderr, ", but got ");
     token_type_fprint(stderr, got.type);
-    fprintf(stderr, " at line %d, pos %d.\n", got.line, got.pos);
+    fprintf(stderr, " on line %d, pos %d.\n", got.line, got.pos);
 }
 
 static Token parser_consume(Parser* self, TokenType expected, const char* name_of_expected) {
