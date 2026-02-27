@@ -99,6 +99,14 @@ static char lexer_advance(Lexer* self) {
     return self->tokens.string_data[self->cur++];
 }
 
+static bool lexer_matches(Lexer* self, char c) {
+    if(lexer_peek(self) == c) {
+        lexer_advance(self);
+        return true;
+    }
+    return false;
+}
+
 static void lexer_skip_whitespace(Lexer* self) {
     while(isspace(lexer_peek(self))) {
         lexer_advance(self);
@@ -141,8 +149,18 @@ static bool lexer_add_keyword_token(Lexer* self, size_t length, char* expected, 
     return true;
 }
 
+static bool is_identifier_char(char c) {
+    return isalnum(c) || c == '_';
+}
+
 static void lexer_add_identifier_token(Lexer* self) {
     switch(lexer_prev(self)) {
+    case 'b':
+        if(lexer_add_keyword_token(self, 3, "ool", TOKEN_KEYWORD_BOOL)) return;
+        break;
+    case 'f':
+        if(lexer_add_keyword_token(self, 4, "alse", TOKEN_KEYWORD_FALSE)) return;
+        break;
     case 'i':
         if(lexer_add_keyword_token(self, 2, "nt", TOKEN_KEYWORD_INT)) return;
         break;
@@ -152,8 +170,11 @@ static void lexer_add_identifier_token(Lexer* self) {
     case 'm':
         if(lexer_add_keyword_token(self, 2, "ut", TOKEN_KEYWORD_MUT)) return;
         break;
+    case 't':
+        if(lexer_add_keyword_token(self, 3, "rue", TOKEN_KEYWORD_TRUE)) return;
+        break;
     }
-    while(isalpha(lexer_peek(self))) lexer_advance(self);
+    while(is_identifier_char(lexer_peek(self))) lexer_advance(self);
     lexer_add_token(self, TOKEN_IDENTIFIER);
 }
 
@@ -177,8 +198,20 @@ static void lexer_add_next_token(Lexer* self) {
         case '%':
             lexer_add_token(self, TOKEN_MOD);
             break;
+        case '<':
+            lexer_add_token(self, lexer_matches(self, '=') ? TOKEN_LE : TOKEN_LT);
+            break;
+        case '>':
+            lexer_add_token(self, lexer_matches(self, '=') ? TOKEN_GE : TOKEN_GT);
+            break;
         case '=':
-            lexer_add_token(self, TOKEN_EQUAL);
+            lexer_add_token(self, lexer_matches(self, '=') ? TOKEN_EQEQ : TOKEN_EQUAL);
+            break;
+        case '&':
+            lexer_add_token(self, lexer_matches(self, '&') ? TOKEN_AND : TOKEN_BITWISE_AND);
+            break;
+        case '|':
+            lexer_add_token(self, lexer_matches(self, '|') ? TOKEN_OR : TOKEN_BITWISE_OR);
             break;
         case ',':
             lexer_add_token(self, TOKEN_COMMA);

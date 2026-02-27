@@ -56,6 +56,14 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             node_fprintln(file, array, node->right, indentation + 4);
             break;
         }
+        case NODE_LOGICAL_OP: {
+            NodeBinOp* node = &base_node->as.bin_op;
+            fprintf(file, "NodeLogicalOp: ");
+            token_fprintln(file, node->op);
+            node_fprintln(file, array, node->left, indentation + 4);
+            node_fprintln(file, array, node->right, indentation + 4);
+            break;
+        }
         case NODE_INDEX_OP: {
             NodeIndexOp* node = &base_node->as.index_op;
             fprintf(file, "NodeIndexOp: %s\n", node->should_set ? "SET" : "GET");
@@ -84,8 +92,14 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             break;
         }
         case NODE_INT: {
-            NodeInt* node = &base_node->as.int_literal;
+            NodeLiteral* node = &base_node->as.literal;
             fprintf(file, "NodeInt: ");
+            token_fprintln(file, node->value);
+            break;
+        }
+        case NODE_BOOL: {
+            NodeLiteral* node = &base_node->as.literal;
+            fprintf(file, "NodeBool: ");
             token_fprintln(file, node->value);
             break;
         }

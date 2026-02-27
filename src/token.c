@@ -47,6 +47,33 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_MOD:
             fprintf(file, "TOKEN_MOD");
             break;
+        case TOKEN_BITWISE_AND:
+            fprintf(file, "TOKEN_BITWISE_AND");
+            break;
+        case TOKEN_BITWISE_OR:
+            fprintf(file, "TOKEN_BITWISE_OR");
+            break;
+        case TOKEN_LT:
+            fprintf(file, "TOKEN_LT");
+            break;
+        case TOKEN_LE:
+            fprintf(file, "TOKEN_LE");
+            break;
+        case TOKEN_GT:
+            fprintf(file, "TOKEN_GT");
+            break;
+        case TOKEN_GE:
+            fprintf(file, "TOKEN_GE");
+            break;
+        case TOKEN_EQEQ:
+            fprintf(file, "TOKEN_EQEQ");
+            break;
+        case TOKEN_AND:
+            fprintf(file, "TOKEN_AND");
+            break;
+        case TOKEN_OR:
+            fprintf(file, "TOKEN_OR");
+            break;
         case TOKEN_EQUAL:
             fprintf(file, "TOKEN_EQUAL");
             break;
@@ -88,6 +115,15 @@ void token_type_fprint(FILE* file, TokenType self) {
             break;
         case TOKEN_KEYWORD_INT:
             fprintf(file, "TOKEN_KEYWORD_INT");
+            break;
+        case TOKEN_KEYWORD_BOOL:
+            fprintf(file, "TOKEN_KEYWORD_BOOL");
+            break;
+        case TOKEN_KEYWORD_TRUE:
+            fprintf(file, "TOKEN_KEYWORD_TRUE");
+            break;
+        case TOKEN_KEYWORD_FALSE:
+            fprintf(file, "TOKEN_KEYWORD_FALSE");
             break;
     }
 }

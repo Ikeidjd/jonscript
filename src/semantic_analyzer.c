@@ -26,7 +26,7 @@ typedef struct Semen {
 } Semen;
 
 typedef enum SemenError {
-    SEMEN_ARITHMETIC,
+    SEMEN_OPERATION,
     SEMEN_INDEX,
     SEMEN_MISMATCH
 } SemenError;
@@ -54,8 +54,8 @@ static void semen_error(Semen* self, SemenError error, Token op, Type* left, Typ
     semen_signal_error(self);
 
     switch(error) {
-        case SEMEN_ARITHMETIC:
-            fprintf(stderr, "Can't perform arithmetic operation %c on ", op.text[0]);
+        case SEMEN_OPERATION:
+            fprintf(stderr, "Can't perform operation %.*s on ", op.text_len, op.text);
             break;
         case SEMEN_INDEX:
             fprintf(stderr, "Can't perform indexing operation on ");
@@ -139,7 +139,47 @@ static Type* anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
     Type* left = ANAL(node->left);
     Type* right = ANAL(node->right);
 
-    if(!is_primitive(left, TYPE_INT) || left != right) semen_error(self, SEMEN_ARITHMETIC, node->op, left, right);
+    bool is_correct_type_for_op;
+    Type* out;
+    switch(node->op.type) {
+        case TOKEN_PLUS:
+        case TOKEN_MINUS:
+        case TOKEN_MULT:
+        case TOKEN_DIV:
+        case TOKEN_MOD:
+        case TOKEN_BITWISE_AND:
+        case TOKEN_BITWISE_OR:
+            is_correct_type_for_op = is_primitive(left, TYPE_INT);
+            out = left;
+            break;
+        case TOKEN_LT:
+        case TOKEN_LE:
+        case TOKEN_GT:
+        case TOKEN_GE:
+            is_correct_type_for_op = is_primitive(left, TYPE_INT);
+            out = (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
+            break;
+        case TOKEN_EQEQ:
+            is_correct_type_for_op = true;
+            out = (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
+            break;
+        default:
+            fprintf(stderr, "Invalid binary operator ");
+            token_fprint(stderr, node->op);
+            fprintf(stderr, ". This should never happen.\n");
+            break;
+    }
+
+    if(!is_correct_type_for_op || left != right) semen_error(self, SEMEN_OPERATION, node->op, left, right);
+
+    return out;
+}
+
+static Type* anal_logical_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
+    Type* left = ANAL(node->left);
+    Type* right = ANAL(node->right);
+
+    if(!is_primitive(left, TYPE_BOOL) || left != right) semen_error(self, SEMEN_OPERATION, node->op, left, right);
 
     return left;
 }
@@ -183,8 +223,12 @@ static Type* anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLeng
     return (Type*) array_type_new(&nodes->type_hash_set, type);
 }
 
-static Type* anal_int(Semen* self, NodeArray* nodes, NodeInt* node) {
+static Type* anal_int(Semen* self, NodeArray* nodes, NodeLiteral* node) {
     return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_INT);
+}
+
+static Type* anal_bool(Semen* self, NodeArray* nodes, NodeLiteral* node) {
+    return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
 }
 
 static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
@@ -194,11 +238,13 @@ static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
         case NODE_ASSIGN_STAT: return anal_assign_stat(self, nodes, &node->as.assign_stat);
         case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
+        case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);
         case NODE_INDEX_OP: return anal_index_op(self, nodes, &node->as.index_op);
         case NODE_VAR: return anal_var(self, nodes, &node->as.var);
         case NODE_ARRAY_LIST_INIT: return anal_array_list_init(self, nodes, &node->as.array_list_init);
         case NODE_ARRAY_LENGTH_INIT: return anal_array_length_init(self, nodes, &node->as.array_length_init);
-        case NODE_INT: return anal_int(self, nodes, &node->as.int_literal);
+        case NODE_INT: return anal_int(self, nodes, &node->as.literal);
+        case NODE_BOOL: return anal_bool(self, nodes, &node->as.literal);
     }
 }
 

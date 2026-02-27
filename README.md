@@ -9,7 +9,7 @@ type_keyword = 'int'
 
 expr = value bin_op expr <br>
 bin_op = '+' | '-' | '*' | '/' | '%' <br>
-value = (INT | array_literal | '(' expr ')') ('[' expr ']')* <br>
+value = (INT | BOOL | array_literal | '(' expr ')') ('[' expr ']')* <br>
 array_literal = '[' (expr ((',' expr)* | ':' expr))? ']'
 
 ### Operator precedence

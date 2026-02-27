@@ -31,6 +31,9 @@ void primitive_type_fprint(FILE* file, PrimitiveType self) {
         case TYPE_INT:
             fprintf(file, "int");
             break;
+        case TYPE_BOOL:
+            fprintf(file, "bool");
+            break;
     }
 }
 

@@ -1,12 +1,21 @@
-let n: int = 10;
-mut fib: int[] = [0:n];
-fib[0] = 0;
-fib[1] = 1;
-fib[2] = fib[1] + fib[0];
-fib[3] = fib[2] + fib[1];
-fib[4] = fib[3] + fib[2];
-fib[5] = fib[4] + fib[3];
-fib[6] = fib[5] + fib[4];
-fib[7] = fib[6] + fib[5];
-fib[8] = fib[7] + fib[6];
-fib[9] = fib[8] + fib[7];
+let a: int = 0;
+let b: int = 0;
+
+let bit_and: int = a & b;
+let bit_or: int = a | b;
+
+let lt: bool = a < b;
+let le: bool = a <= b;
+let eq: bool = a == b;
+let ge: bool = a >= b;
+let gt: bool = a > b;
+
+let and: bool = false && false;
+and = false && true;
+and = true && false;
+and = true && true;
+
+let or: bool = false || false;
+or = false || true;
+or = true || false;
+or = true || true;

@@ -1,0 +1,12 @@
+let n: int = 10;
+mut fib: int[] = [0:n];
+fib[0] = 0;
+fib[1] = 1;
+fib[2] = fib[1] + fib[0];
+fib[3] = fib[2] + fib[1];
+fib[4] = fib[3] + fib[2];
+fib[5] = fib[4] + fib[3];
+fib[6] = fib[5] + fib[4];
+fib[7] = fib[6] + fib[5];
+fib[8] = fib[7] + fib[6];
+fib[9] = fib[8] + fib[7];

@@ -15,6 +15,19 @@ typedef enum TokenType {
     TOKEN_MULT,
     TOKEN_DIV,
     TOKEN_MOD,
+
+    TOKEN_BITWISE_AND,
+    TOKEN_BITWISE_OR,
+
+    TOKEN_LT,
+    TOKEN_LE,
+    TOKEN_GT,
+    TOKEN_GE,
+    TOKEN_EQEQ,
+
+    TOKEN_AND,
+    TOKEN_OR,
+
     TOKEN_EQUAL,
 
     // Symbols
@@ -32,7 +45,11 @@ typedef enum TokenType {
     TOKEN_IDENTIFIER,
     TOKEN_KEYWORD_LET,
     TOKEN_KEYWORD_MUT,
-    TOKEN_KEYWORD_INT
+    TOKEN_KEYWORD_INT,
+    TOKEN_KEYWORD_BOOL,
+
+    TOKEN_KEYWORD_TRUE,
+    TOKEN_KEYWORD_FALSE
 } TokenType;
 
 typedef struct Token {

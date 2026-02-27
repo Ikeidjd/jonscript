@@ -1,0 +1,5 @@
+let n: int = 10;
+mut fib: int[] = [0:n];
+fib[0] = 0;
+fib[1] = 1;
+for(int i = 2; i < 10; i++) fib[i] = fib[i - 1] + fib[i - 2];

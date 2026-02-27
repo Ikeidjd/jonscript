@@ -9,6 +9,13 @@ Value value_new_int(int64_t n) {
     };
 }
 
+Value value_new_bool(bool b) {
+    return (Value) {
+        .type = VALUE_BOOL,
+        .as.boolean = b
+    };
+}
+
 Value value_new_array(ValueArray* array) {
     return (Value) {
         .type = VALUE_ARRAY,
@@ -16,10 +23,26 @@ Value value_new_array(ValueArray* array) {
     };
 }
 
+bool value_equals(Value a, Value b) {
+    if(a.type != b.type) {
+        fprintf(stderr, "Types of value don't match on equality. This should never happen.\n");
+        return false;
+    }
+
+    switch(a.type) {
+        case VALUE_INT: return a.as.integer == b.as.integer;
+        case VALUE_BOOL: return a.as.boolean == b.as.boolean;
+        case VALUE_ARRAY: return a.as.array->data == b.as.array->data;
+    }
+}
+
 void value_fprint(FILE* file, Value self) {
     switch(self.type) {
         case VALUE_INT:
             fprintf(file, "%lld", self.as.integer);
+            break;
+        case VALUE_BOOL:
+            fprintf(file, "%s", self.as.boolean ? "true" : "false");
             break;
         case VALUE_ARRAY:
             fprintf(file, "[");

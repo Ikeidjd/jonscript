@@ -1,8 +1,0 @@
-int a = 0;
-int b = 1;
-int c = a + b;
-int d = b + c;
-int e = c + d;
-int f = d + e;
-int g = e + f;
-int h = f + g;

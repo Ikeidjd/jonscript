@@ -17,12 +17,31 @@
 
 typedef enum Precedence {
     PREC_NONE,
+    PREC_OR,
+    PREC_AND,
+    PREC_COMP,
+    PREC_BITWISE_OR,
+    PREC_BITWISE_AND,
     PREC_ADD,
     PREC_MUL
 } Precedence;
 
 static Precedence parser_get_cur_prec(Parser* self) {
     switch(parser_peek(self).type) {
+        case TOKEN_OR:
+            return PREC_OR;
+        case TOKEN_AND:
+            return PREC_AND;
+        case TOKEN_LT:
+        case TOKEN_LE:
+        case TOKEN_GT:
+        case TOKEN_GE:
+        case TOKEN_EQEQ:
+            return PREC_COMP;
+        case TOKEN_BITWISE_OR:
+            return PREC_BITWISE_OR;
+        case TOKEN_BITWISE_AND:
+            return PREC_BITWISE_AND;
         case TOKEN_PLUS:
         case TOKEN_MINUS:
             return PREC_ADD;
@@ -46,6 +65,9 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_KEYWORD_LET:
         case TOKEN_KEYWORD_MUT:
         case TOKEN_KEYWORD_INT:
+        case TOKEN_KEYWORD_BOOL:
+        case TOKEN_KEYWORD_TRUE:
+        case TOKEN_KEYWORD_FALSE:
             return PREC_NONE;
     }
 }
@@ -58,7 +80,7 @@ static NodeIndex parse_prefix_expr(Parser* self) {
     switch(token.type) {
         case TOKEN_INT:
             node = node_array_push(&self->nodes, NODE_INT);
-            GET(node).as.int_literal.value = token;
+            GET(node).as.literal.value = token;
             break;
         case TOKEN_PAREN_LEFT:
             node = PROPAGATE_ERROR(parse_expr(self));
@@ -100,6 +122,11 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             GET(node).as.var.name = token;
             GET(node).as.var.should_set = false;
             break;
+        case TOKEN_KEYWORD_TRUE:
+        case TOKEN_KEYWORD_FALSE:
+            node = node_array_push(&self->nodes, NODE_BOOL);
+            GET(node).as.literal.value = token;
+            break;
         default:
             parser_error_string(self, "expression");
             return 0;
@@ -130,6 +157,8 @@ static NodeIndex parse_precedence(Parser* self, Precedence prev_prec) {
         GET(node_next).as.bin_op.op = parser_advance(self);
         GET(node_next).as.bin_op.right = PROPAGATE_ERROR(parse_precedence(self, cur_prec));
 
+        if(GET(node_next).as.bin_op.op.type == TOKEN_AND || GET(node_next).as.bin_op.op.type == TOKEN_OR) GET(node_next).type = NODE_LOGICAL_OP;
+
         node = node_next;
         cur_prec = parser_get_cur_prec(self);
     }
@@ -142,9 +171,18 @@ static NodeIndex parse_expr(Parser* self) {
 }
 
 static Type* parse_type(Parser* self) {
-    PROPAGATE_ERROR(parser_consume(self, TOKEN_KEYWORD_INT, "type"));
-
-    Type* type = (Type*) primitive_type_new(&self->nodes.type_hash_set, TYPE_INT);
+    Type* type;
+    switch(parser_advance(self).type) {
+        case TOKEN_KEYWORD_INT:
+            type = (Type*) primitive_type_new(&self->nodes.type_hash_set, TYPE_INT);
+            break;
+        case TOKEN_KEYWORD_BOOL:
+            type = (Type*) primitive_type_new(&self->nodes.type_hash_set, TYPE_BOOL);
+            break;
+        default:
+            parser_error_string(self, "type");
+            return NULL;
+    }
 
     while(parser_matches(self, TOKEN_BRACKET_LEFT)) {
         PROPAGATE_ERROR(parser_consume(self, TOKEN_BRACKET_RIGHT, "']'"));

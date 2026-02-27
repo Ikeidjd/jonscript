@@ -9,11 +9,15 @@ typedef unsigned char byte;
 typedef enum Opcode {
     OP_LOAD_BYTE,
     OP_LOAD_VALUE,
+    OP_LOAD_TRUE,
+    OP_LOAD_FALSE,
 
     OP_LOCAL_GET,
     OP_LOCAL_SET,
     OP_INDEX_GET,
     OP_INDEX_SET,
+
+    OP_POP,
 
     OP_ARRAYIFY_LIST,
     OP_ARRAYIFY_LENGTH,
@@ -22,7 +26,20 @@ typedef enum Opcode {
     OP_SUB,
     OP_MUL,
     OP_DIV,
-    OP_MOD
+    OP_MOD,
+
+    OP_BITWISE_AND,
+    OP_BITWISE_OR,
+
+    OP_LT,
+    OP_LE,
+    OP_GT,
+    OP_GE,
+    OP_EQUALS,
+
+    OP_JUMP,
+    OP_JUMP_IF_TRUE,
+    OP_JUMP_IF_FALSE
 } Opcode;
 
 void opcode_fprint(FILE* file, Opcode self);
@@ -39,5 +56,8 @@ typedef struct Code {
 Code code_new();
 void code_destruct(Code self);
 
-void code_push(Code* self, Opcode opcode);
-void code_push_args(Code* self, Opcode opcode, size_t args_length, byte args[]);
+void code_emit(Code* self, Opcode opcode);
+void code_emit_args(Code* self, Opcode opcode, size_t args_length, byte args[]);
+
+size_t code_emit_jump(Code* self, Opcode opcode);
+void code_patch_jump(Code* self, size_t jump);

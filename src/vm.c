@@ -22,13 +22,33 @@ static void vm_pop_n(VM* self, size_t n) {
     self->sp -= n;
 }
 
+static Value vm_top(VM* self) {
+    return self->stack[self->sp - 1];
+}
+
 static void vm_run(VM* self, Chunk* chunk) {
-#define BIN_OP(operator) \
+#define NUMERICAL_BIN_OP(operator) \
 do { \
     int64_t b = vm_pop(self).as.integer; \
     int64_t a = vm_pop(self).as.integer; \
     int64_t result = a operator b; \
     vm_push(self, value_new_int(result)); \
+} while(0)
+
+#define COMPARISON_OP(operator) \
+    do { \
+        int64_t b = vm_pop(self).as.integer; \
+        int64_t a = vm_pop(self).as.integer; \
+        bool result = a operator b; \
+        vm_push(self, value_new_bool(result)); \
+    } while(0)
+
+// Each READ() increments ip by one, so substracting 3 balances it out (the READ() that's missing here is the one that reads the opcode)
+#define JUMP(condition) \
+do { \
+    size_t jump_length = READ(); \
+    jump_length |= READ() << 8; \
+    if(condition) ip += jump_length - 3; \
 } while(0)
 
 #define READ() chunk->code.data[ip++]
@@ -52,6 +72,14 @@ do { \
                 size_t index = READ();
                 index |= (READ() << 8);
                 vm_push(self, chunk->values.data[index]);
+                break;
+            }
+            case OP_LOAD_TRUE: {
+                vm_push(self, value_new_bool(true));
+                break;
+            }
+            case OP_LOAD_FALSE: {
+                vm_push(self, value_new_bool(false));
                 break;
             }
             case OP_LOCAL_GET: {
@@ -80,6 +108,9 @@ do { \
                 array->data[index] = value;
                 break;
             }
+            case OP_POP:
+                vm_pop(self);
+                break;
             case OP_ARRAYIFY_LIST: {
                 size_t length = READ();
                 length |= (READ() << 8);
@@ -108,19 +139,53 @@ do { \
                 break;
             }
             case OP_ADD:
-                BIN_OP(+);
+                NUMERICAL_BIN_OP(+);
                 break;
             case OP_SUB:
-                BIN_OP(-);
+                NUMERICAL_BIN_OP(-);
                 break;
             case OP_MUL:
-                BIN_OP(*);
+                NUMERICAL_BIN_OP(*);
                 break;
             case OP_DIV:
-                BIN_OP(/);
+                NUMERICAL_BIN_OP(/);
                 break;
             case OP_MOD:
-                BIN_OP(%);
+                NUMERICAL_BIN_OP(%);
+                break;
+            case OP_BITWISE_AND:
+                NUMERICAL_BIN_OP(&);
+                break;
+            case OP_BITWISE_OR:
+                NUMERICAL_BIN_OP(|);
+                break;
+            case OP_LT:
+                COMPARISON_OP(<);
+                break;
+            case OP_LE:
+                COMPARISON_OP(<=);
+                break;
+            case OP_GT:
+                COMPARISON_OP(>);
+                break;
+            case OP_GE:
+                COMPARISON_OP(>=);
+                break;
+            case OP_EQUALS: {
+                Value b = vm_pop(self);
+                Value a = vm_pop(self);
+                bool result = value_equals(a, b);
+                vm_push(self, value_new_bool(result));
+                break;
+            }
+            case OP_JUMP:
+                JUMP(true);
+                break;
+            case OP_JUMP_IF_TRUE:
+                JUMP(vm_top(self).as.boolean);
+                break;
+            case OP_JUMP_IF_FALSE:
+                JUMP(!vm_top(self).as.boolean);
                 break;
         }
     }

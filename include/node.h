@@ -56,9 +56,9 @@ typedef struct NodeArrayLengthInit {
     NodeIndex length;
 } NodeArrayLengthInit;
 
-typedef struct NodeInt {
+typedef struct NodeLiteral {
     Token value;
-} NodeInt;
+} NodeLiteral;
 
 typedef enum NodeType {
     NODE_PROGRAM,
@@ -68,12 +68,14 @@ typedef enum NodeType {
     NODE_ASSIGN_STAT,
 
     NODE_BIN_OP,
+    NODE_LOGICAL_OP,
     NODE_INDEX_OP,
 
     NODE_VAR,
     NODE_ARRAY_LIST_INIT,
     NODE_ARRAY_LENGTH_INIT,
-    NODE_INT
+    NODE_INT,
+    NODE_BOOL
 } NodeType;
 
 typedef struct Node {
@@ -91,7 +93,7 @@ typedef struct Node {
         NodeVar var;
         NodeArrayListInit array_list_init;
         NodeArrayLengthInit array_length_init;
-        NodeInt int_literal;
+        NodeLiteral literal;
     } as;
 } Node;
 

@@ -24,7 +24,8 @@ void type_print(Type* self);
 void type_println(Type* self);
 
 typedef enum {
-    TYPE_INT
+    TYPE_INT,
+    TYPE_BOOL
 } PrimitiveType;
 
 typedef struct {

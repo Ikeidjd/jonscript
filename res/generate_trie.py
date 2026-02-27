@@ -1,7 +1,10 @@
 keywords = [
     "int",
     "let",
-    "mut"
+    "mut",
+    "bool",
+    "true",
+    "false"
 ]
 
 tab = "    "
