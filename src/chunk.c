@@ -2,20 +2,37 @@
 
 Chunk chunk_new() {
     return (Chunk) {
-        .values = value_array_new(),
+        .values = object_array_new(),
         .code = code_new()
     };
 }
 
-void chunk_destruct(Chunk chunk) {
-    code_destruct(chunk.code);
-    value_array_destruct(chunk.values);
+void chunk_destruct(Chunk self) {
+    code_destruct(self.code);
+
+    printf("Freeing compile-time objects...\n");
+    for(size_t i = 0; i < self.values.length; i++) {
+        if(self.values.data[i].type != VALUE_OBJECT) continue;
+
+        Object* object = self.values.data[i].as.object;
+        printf("Freeing object %p of type %d: ", object, object->type);
+        object_println(object);
+        Object* next = object->next;
+        object_free(object);
+        object = next;
+    }
+
+    object_array_destruct(&self.values);
 }
 
 void chunk_emit_load_value_op(Chunk* self, Value value) {
-    value_array_push(&self->values, value);
+    object_array_push(&self->values, value);
     size_t index = self->values.length - 1;
     code_emit_args(&self->code, OP_LOAD_VALUE, 2, TO_LE_2_BYTES(index));
+}
+
+void chunk_emit_load_str_op(Chunk* self, Token token) {
+    
 }
 
 static size_t chunk_display_monoarg_op(Chunk* self, Opcode op, size_t byte_count, size_t offset) {
@@ -60,6 +77,9 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_GT:
         case OP_GE:
         case OP_EQUALS:
+        case OP_CONCAT:
+        case OP_PRINT:
+        case OP_PRINTLN:
             return chunk_display_simple_op(op, offset);
         case OP_LOAD_BYTE:
             return chunk_display_monoarg_op(self, op, 1, offset);

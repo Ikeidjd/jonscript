@@ -135,6 +135,11 @@ static Type* anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* nod
     return NULL;
 }
 
+static Type* anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
+    ANAL(node->expr);
+    return NULL;
+}
+
 static Type* anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
     Type* left = ANAL(node->left);
     Type* right = ANAL(node->right);
@@ -163,6 +168,8 @@ static Type* anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
             is_correct_type_for_op = true;
             out = (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
             break;
+        case TOKEN_DOTDOT:
+            return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR);
         default:
             fprintf(stderr, "Invalid binary operator ");
             token_fprint(stderr, node->op);
@@ -231,11 +238,16 @@ static Type* anal_bool(Semen* self, NodeArray* nodes, NodeLiteral* node) {
     return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
 }
 
+static Type* anal_str(Semen* self, NodeArray* nodes, NodeLiteral* node) {
+    return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR);
+}
+
 static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
     Node* node = &nodes->data[node_index];
     switch(node->type) {
         case NODE_PROGRAM: return anal_program(self, nodes, &node->as.program);
         case NODE_ASSIGN_STAT: return anal_assign_stat(self, nodes, &node->as.assign_stat);
+        case NODE_PRINT_STAT: return anal_print_stat(self, nodes, &node->as.print_stat);
         case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);
@@ -245,6 +257,7 @@ static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
         case NODE_ARRAY_LENGTH_INIT: return anal_array_length_init(self, nodes, &node->as.array_length_init);
         case NODE_INT: return anal_int(self, nodes, &node->as.literal);
         case NODE_BOOL: return anal_bool(self, nodes, &node->as.literal);
+        case NODE_STR: return anal_str(self, nodes, &node->as.literal);
     }
 }
 

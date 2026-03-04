@@ -75,6 +75,15 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_EQUALS:
             fprintf(file, "OP_EQUALS");
             break;
+        case OP_CONCAT:
+            fprintf(file, "OP_CONCAT");
+            break;
+        case OP_PRINT:
+            fprintf(file, "OP_PRINT");
+            break;
+        case OP_PRINTLN:
+            fprintf(file, "OP_PRINTLN");
+            break;
         case OP_JUMP:
             fprintf(file, "OP_JUMP");
             break;

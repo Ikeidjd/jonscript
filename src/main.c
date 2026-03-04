@@ -27,6 +27,9 @@ int main() {
     printf("\n");
 
     chunk = compile(&nodes, &had_error);
+End1:
+    token_array_destruct(tokens);
+    node_array_destruct(nodes);
     if(had_error) goto End;
     chunk_disassemble(&chunk);
     printf("\n");
@@ -34,8 +37,6 @@ int main() {
     run(&chunk);
 
     End:
-    token_array_destruct(tokens);
-    node_array_destruct(nodes);
     chunk_destruct(chunk);
 
     return 0;

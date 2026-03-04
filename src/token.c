@@ -32,6 +32,9 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_INT:
             fprintf(file, "TOKEN_INT");
             break;
+        case TOKEN_STR:
+            fprintf(file, "TOKEN_STR");
+            break;
         case TOKEN_PLUS:
             fprintf(file, "TOKEN_PLUS");
             break;
@@ -74,6 +77,12 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_OR:
             fprintf(file, "TOKEN_OR");
             break;
+        case TOKEN_DOTDOT:
+            fprintf(file, "TOKEN_DOTDOT");
+            break;
+        case TOKEN_DOT:
+            fprintf(file, "TOKEN_DOT");
+            break;
         case TOKEN_EQUAL:
             fprintf(file, "TOKEN_EQUAL");
             break;
@@ -113,11 +122,20 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_KEYWORD_MUT:
             fprintf(file, "TOKEN_KEYWORD_MUT");
             break;
+        case TOKEN_KEYWORD_PRINT:
+            fprintf(file, "TOKEN_KEYWORD_PRINT");
+            break;
+        case TOKEN_KEYWORD_PRINTLN:
+            fprintf(file, "TOKEN_KEYWORD_PRINTLN");
+            break;
         case TOKEN_KEYWORD_INT:
             fprintf(file, "TOKEN_KEYWORD_INT");
             break;
         case TOKEN_KEYWORD_BOOL:
             fprintf(file, "TOKEN_KEYWORD_BOOL");
+            break;
+        case TOKEN_KEYWORD_STR:
+            fprintf(file, "TOKEN_KEYWORD_STR");
             break;
         case TOKEN_KEYWORD_TRUE:
             fprintf(file, "TOKEN_KEYWORD_TRUE");

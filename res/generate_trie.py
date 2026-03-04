@@ -4,7 +4,10 @@ keywords = [
     "mut",
     "bool",
     "true",
-    "false"
+    "false",
+    "str",
+    "print",
+    "println"
 ]
 
 tab = "    "

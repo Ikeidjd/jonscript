@@ -18,6 +18,11 @@ static void comp_assign_stat(Chunk* self, NodeArray* nodes, NodeAssignStat* node
     comp(self, nodes, node->lvalue);
 }
 
+static void comp_print_stat(Chunk* self, NodeArray* nodes, NodePrintStat* node) {
+    comp(self, nodes, node->expr);
+    code_emit(&self->code, node->add_line ? OP_PRINTLN : OP_PRINT);
+}
+
 static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
     comp(self, nodes, node->left);
     comp(self, nodes, node->right);
@@ -58,6 +63,9 @@ static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
             break;
         case TOKEN_EQEQ:
             code_emit(&self->code, OP_EQUALS);
+            break;
+        case TOKEN_DOTDOT:
+            code_emit(&self->code, OP_CONCAT);
             break;
         default:
             fprintf(stderr, "Invalid binary operator ");
@@ -113,6 +121,14 @@ static void comp_bool(Chunk* self, NodeArray* nodes, NodeLiteral* node) {
     code_emit(&self->code, node->value.type == TOKEN_KEYWORD_TRUE ? OP_LOAD_TRUE : OP_LOAD_FALSE);
 }
 
+static void comp_str(Chunk* self, NodeArray* nodes, NodeLiteral* node) {
+    ObjectStr* str = malloc(sizeof(ObjectStr));
+    char* data = malloc(node->value.text_len);
+    for(size_t i = 0; i < node->value.text_len; i++) data[i] = node->value.text[i];
+    *str = object_str_new(data, node->value.text_len);
+    chunk_emit_load_value_op(self, value_new_object((Object*) str));
+}
+
 static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index) {
     Node* node = &nodes->data[node_index];
     switch(node->type) {
@@ -124,6 +140,9 @@ static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index) {
             break;
         case NODE_ASSIGN_STAT:
             comp_assign_stat(self, nodes, &node->as.assign_stat);
+            break;
+        case NODE_PRINT_STAT:
+            comp_print_stat(self, nodes, &node->as.print_stat);
             break;
         case NODE_BIN_OP:
             comp_bin_op(self, nodes, &node->as.bin_op);
@@ -148,6 +167,9 @@ static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index) {
             break;
         case NODE_BOOL:
             comp_bool(self, nodes, &node->as.literal);
+            break;
+        case NODE_STR:
+            comp_str(self, nodes, &node->as.literal);
             break;
     }
 }

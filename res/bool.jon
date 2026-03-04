@@ -1,0 +1,21 @@
+let a: int = 0;
+let b: int = 0;
+
+let bit_and: int = a & b;
+let bit_or: int = a | b;
+
+let lt: bool = a < b;
+let le: bool = a <= b;
+let eq: bool = a == b;
+let ge: bool = a >= b;
+let gt: bool = a > b;
+
+let and: bool = false && false;
+and = false && true;
+and = true && false;
+and = true && true;
+
+let or: bool = false || false;
+or = false || true;
+or = true || false;
+or = true || true;

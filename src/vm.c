@@ -6,9 +6,26 @@
 #include "stack.h"
 
 typedef struct VM {
+    Object* object;
     size_t sp;
     Value stack[STACK_SIZE];
 } VM;
+
+static void vm_free(VM* self) {
+    Object* object = self->object;
+
+    printf("Freeing runtime objects...\n");
+    while(object != NULL) {
+        printf("Freeing object %p of type %d: ", object, object->type);
+        object_println(object);
+        Object* next = object->next;
+        object_free(object);
+        object = next;
+    }
+    printf("\n");
+
+    free(self);
+}
 
 static void vm_push(VM* self, Value value) {
     self->stack[self->sp++] = value;
@@ -24,6 +41,26 @@ static void vm_pop_n(VM* self, size_t n) {
 
 static Value vm_top(VM* self) {
     return self->stack[self->sp - 1];
+}
+
+static ObjectStr* vm_object_str_malloc(VM* self, size_t length) {
+    ObjectStr* out = malloc(sizeof(ObjectStr));
+    *out = object_str_new(malloc(length), length);
+
+    out->base.next = self->object;
+    self->object = (Object*) out;
+
+    return out;
+}
+
+static ObjectArray* vm_object_array_malloc(VM* self, size_t element_count) {
+    ObjectArray* out = malloc(sizeof(ObjectArray));
+    *out = object_array_of_length(element_count);
+
+    out->base.next = self->object;
+    self->object = (Object*) out;
+
+    return out;
 }
 
 static void vm_run(VM* self, Chunk* chunk) {
@@ -96,14 +133,14 @@ do { \
             }
             case OP_INDEX_GET: {
                 size_t index = vm_pop(self).as.integer;
-                ValueArray* array = vm_pop(self).as.array;
+                ObjectArray* array = AS_ARRAY(vm_pop(self));
                 vm_push(self, array->data[index]);
                 break;
             }
             case OP_INDEX_SET: {
                 // Yeah, the order of arguments is a little weird, but it was easier to compile that way
                 size_t index = vm_pop(self).as.integer;
-                ValueArray* array = vm_pop(self).as.array;
+                ObjectArray* array = AS_ARRAY(vm_pop(self));
                 Value value = vm_pop(self);
                 array->data[index] = value;
                 break;
@@ -114,28 +151,18 @@ do { \
             case OP_ARRAYIFY_LIST: {
                 size_t length = READ();
                 length |= (READ() << 8);
-                ValueArray* array = malloc(sizeof(ValueArray)); // TODO: remember to free() this when you implement garbage collection
-                *array = (ValueArray) {
-                    .data = malloc(length * sizeof(Value)), // TODO: remember to free() this when you implement garbage collection
-                    .length = length,
-                    .capacity = length
-                };
+                ObjectArray* array = vm_object_array_malloc(self, length);
                 for(size_t i = 0; i < length; i++) array->data[i] = self->stack[i + self->sp - length];
                 vm_pop_n(self, length);
-                vm_push(self, value_new_array(array));
+                vm_push(self, value_new_object((Object*) array));
                 break;
             }
             case OP_ARRAYIFY_LENGTH: {
                 size_t length = vm_pop(self).as.integer;
-                ValueArray* array = malloc(sizeof(ValueArray)); // TODO: remember to free() this when you implement garbage collection
-                *array = (ValueArray) {
-                    .data = malloc(length * sizeof(Value)), // TODO: remember to free() this when you implement garbage collection
-                    .length = length,
-                    .capacity = length
-                };
+                ObjectArray* array = vm_object_array_malloc(self, length);
                 Value value = vm_pop(self);
                 for(size_t i = 0; i < length; i++) array->data[i] = value;
-                vm_push(self, value_new_array(array));
+                vm_push(self, value_new_object((Object*) array));
                 break;
             }
             case OP_ADD:
@@ -171,6 +198,35 @@ do { \
             case OP_GE:
                 COMPARISON_OP(>=);
                 break;
+            case OP_CONCAT: {
+                Value b = vm_pop(self);
+                Value a = vm_pop(self);
+
+                size_t a_length;
+                bool a_should_free;
+                char* a_str = value_to_string(a, &a_length, &a_should_free);
+
+                size_t b_length;
+                bool b_should_free;
+                char* b_str = value_to_string(b, &b_length, &b_should_free);
+
+                ObjectStr* result = vm_object_str_malloc(self, a_length + b_length);
+                for(size_t i = 0; i < a_length; i++) result->data[i] = a_str[i];
+                for(size_t i = 0; i < b_length; i++) result->data[i + a_length] = b_str[i];
+
+                if(a_should_free) free(a_str);
+                if(b_should_free) free(b_str);
+
+                vm_push(self, value_new_object((Object*) result));
+
+                break;
+            }
+            case OP_PRINT:
+                value_print(vm_pop(self));
+                break;
+            case OP_PRINTLN:
+                value_println(vm_pop(self));
+                break;
             case OP_EQUALS: {
                 Value b = vm_pop(self);
                 Value a = vm_pop(self);
@@ -193,11 +249,16 @@ do { \
 
 void run(Chunk* chunk) {
     VM* self = (VM*) malloc(sizeof(VM));
+    self->object = NULL;
     self->sp = 0;
     vm_run(self, chunk);
+
     for(size_t i = 0; i < self->sp; i++) {
         printf("[");
         value_print(self->stack[i]);
         printf("]");
     }
+    printf("\n");
+
+    vm_free(self);
 }

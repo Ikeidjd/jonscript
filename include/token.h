@@ -8,6 +8,7 @@ typedef enum TokenType {
 
     // Literals
     TOKEN_INT,
+    TOKEN_STR,
 
     // Operators
     TOKEN_PLUS,
@@ -28,6 +29,10 @@ typedef enum TokenType {
     TOKEN_AND,
     TOKEN_OR,
 
+    TOKEN_DOTDOT,
+
+    TOKEN_DOT,
+
     TOKEN_EQUAL,
 
     // Symbols
@@ -43,10 +48,16 @@ typedef enum TokenType {
 
     // Identifiers and keywords
     TOKEN_IDENTIFIER,
+
     TOKEN_KEYWORD_LET,
     TOKEN_KEYWORD_MUT,
+
+    TOKEN_KEYWORD_PRINT,
+    TOKEN_KEYWORD_PRINTLN,
+
     TOKEN_KEYWORD_INT,
     TOKEN_KEYWORD_BOOL,
+    TOKEN_KEYWORD_STR,
 
     TOKEN_KEYWORD_TRUE,
     TOKEN_KEYWORD_FALSE

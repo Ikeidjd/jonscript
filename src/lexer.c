@@ -19,7 +19,8 @@ typedef struct Lexer {
 } Lexer;
 
 typedef enum LexerError {
-    LEXER_INVALID_CHARACTER
+    LEXER_INVALID_CHARACTER,
+    LEXER_UNCLOSED_STRING_LITERAL
 } LexerError;
 
 // Remember to free() returned buffer
@@ -73,6 +74,9 @@ static void lexer_error(Lexer* self, LexerError error) {
     switch(error) {
         case LEXER_INVALID_CHARACTER:
             fprintf(stderr, "Invalid character '%c'", lexer_start_cur_char(self));
+            break;
+        case LEXER_UNCLOSED_STRING_LITERAL:
+            fprintf(stderr, "Unclosed string literal");
             break;
     }
     fprintf(stderr, " on line %d, pos %d.\n", self->start_line, self->start_pos);
@@ -132,13 +136,29 @@ static void lexer_add_token(Lexer* self, TokenType type) {
     );
 }
 
+static void lexer_add_str_token(Lexer* self) {
+    lexer_update_start_indices(self);
+    while(lexer_peek(self) != '"') {
+        if(lexer_peek(self) == '\n' || lexer_peek(self) == '\0') {
+            lexer_error(self, LEXER_UNCLOSED_STRING_LITERAL);
+            return;
+        }
+        lexer_advance(self);
+    }
+    lexer_add_token(self, TOKEN_STR);
+    lexer_advance(self);
+}
+
 static void lexer_add_int_token(Lexer* self) {
     while(isdigit(lexer_peek(self))) lexer_advance(self);
     lexer_add_token(self, TOKEN_INT);
 }
 
 static bool lexer_add_keyword_token(Lexer* self, size_t length, char* expected, TokenType type) {
-    if(length == 0 && isalpha(lexer_peek(self))) return false;
+    if(length == 0) {
+        if(isalpha(lexer_peek(self))) return false;
+        else self->cur--;
+    }
 
     for(size_t i = 0; i < length; i++) {
         if(lexer_peek(self) != expected[i]) return false;
@@ -170,6 +190,30 @@ static void lexer_add_identifier_token(Lexer* self) {
     case 'm':
         if(lexer_add_keyword_token(self, 2, "ut", TOKEN_KEYWORD_MUT)) return;
         break;
+    case 'p':
+        switch(lexer_advance(self)) {
+        case 'r':
+            switch(lexer_advance(self)) {
+            case 'i':
+                switch(lexer_advance(self)) {
+                case 'n':
+                    switch(lexer_advance(self)) {
+                    case 't':
+                        switch(lexer_advance(self)) {
+                        case 'l':
+                            if(lexer_add_keyword_token(self, 1, "n", TOKEN_KEYWORD_PRINTLN)) return;
+                            break;
+                        default:
+                            if(lexer_add_keyword_token(self, 0, "", TOKEN_KEYWORD_PRINT)) return;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    case 's':
+        if(lexer_add_keyword_token(self, 2, "tr", TOKEN_KEYWORD_STR)) return;
+        break;
     case 't':
         if(lexer_add_keyword_token(self, 3, "rue", TOKEN_KEYWORD_TRUE)) return;
         break;
@@ -183,6 +227,9 @@ static void lexer_add_next_token(Lexer* self) {
     lexer_update_start_indices(self);
     char c = lexer_advance(self);
     switch(c) {
+        case '"':
+            lexer_add_str_token(self);
+            break;
         case '+':
             lexer_add_token(self, TOKEN_PLUS);
             break;
@@ -212,6 +259,9 @@ static void lexer_add_next_token(Lexer* self) {
             break;
         case '|':
             lexer_add_token(self, lexer_matches(self, '|') ? TOKEN_OR : TOKEN_BITWISE_OR);
+            break;
+        case '.':
+            lexer_add_token(self, lexer_matches(self, '.') ? TOKEN_DOTDOT : TOKEN_DOT);
             break;
         case ',':
             lexer_add_token(self, TOKEN_COMMA);

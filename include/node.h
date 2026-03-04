@@ -16,6 +16,7 @@ typedef struct NodeVarDecl {
     Token name;
     Token equals;
     NodeIndex value;
+    bool is_mutable;
 } NodeVarDecl;
 
 typedef struct NodeAssignStat {
@@ -23,6 +24,11 @@ typedef struct NodeAssignStat {
     Token equals;
     NodeIndex rvalue;
 } NodeAssignStat;
+
+typedef struct NodePrintStat {
+    NodeIndex expr;
+    bool add_line;
+} NodePrintStat;
 
 typedef struct NodeBinOp {
     Token op;
@@ -66,6 +72,7 @@ typedef enum NodeType {
     NODE_VAR_DECL,
 
     NODE_ASSIGN_STAT,
+    NODE_PRINT_STAT,
 
     NODE_BIN_OP,
     NODE_LOGICAL_OP,
@@ -75,7 +82,8 @@ typedef enum NodeType {
     NODE_ARRAY_LIST_INIT,
     NODE_ARRAY_LENGTH_INIT,
     NODE_INT,
-    NODE_BOOL
+    NODE_BOOL,
+    NODE_STR
 } NodeType;
 
 typedef struct Node {
@@ -86,6 +94,7 @@ typedef struct Node {
         NodeVarDecl var_decl;
 
         NodeAssignStat assign_stat;
+        NodePrintStat print_stat;
 
         NodeBinOp bin_op;
         NodeIndexOp index_op;

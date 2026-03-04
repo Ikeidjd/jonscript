@@ -1,6 +1,8 @@
 #include "value.h"
 
-#include "dynamic_array.h"
+#include <stdlib.h>
+
+#include "object.h"
 
 Value value_new_int(int64_t n) {
     return (Value) {
@@ -16,10 +18,10 @@ Value value_new_bool(bool b) {
     };
 }
 
-Value value_new_array(ValueArray* array) {
+Value value_new_object(Object* object) {
     return (Value) {
-        .type = VALUE_ARRAY,
-        .as.array = array
+        .type = VALUE_OBJECT,
+        .as.object = object
     };
 }
 
@@ -32,7 +34,50 @@ bool value_equals(Value a, Value b) {
     switch(a.type) {
         case VALUE_INT: return a.as.integer == b.as.integer;
         case VALUE_BOOL: return a.as.boolean == b.as.boolean;
-        case VALUE_ARRAY: return a.as.array->data == b.as.array->data;
+        case VALUE_OBJECT: return object_equals(a.as.object, b.as.object);
+    }
+}
+
+char* value_to_string(Value self, size_t* length, bool* should_free) {
+    switch(self.type) {
+        case VALUE_INT: {
+            uint64_t integer = self.as.integer;
+
+            if(integer == 0) {
+                *length = 1;
+                *should_free = false;
+                return "0";
+            }
+
+            char* out = malloc(32);
+
+            *length = 0;
+            while(integer > 0) {
+                out[(*length)++] = '0' + integer % 10;
+                integer /= 10;
+            }
+
+            for(size_t i = 0; i < *length / 2; i++) {
+                char temp = out[i];
+                out[i] = out[*length - i - 1];
+                out[*length - i - 1] = temp;
+            }
+
+            *should_free = true;
+            return out;
+        }
+        case VALUE_BOOL:
+            *should_free = false;
+
+            if(self.as.boolean) {
+                *length = 4;
+                return "true";
+            }
+
+            *length = 5;
+            return "false";
+        case VALUE_OBJECT:
+            return object_to_string(self.as.object, length, should_free);
     }
 }
 
@@ -44,13 +89,8 @@ void value_fprint(FILE* file, Value self) {
         case VALUE_BOOL:
             fprintf(file, "%s", self.as.boolean ? "true" : "false");
             break;
-        case VALUE_ARRAY:
-            fprintf(file, "[");
-            for(size_t i = 0; i < self.as.array->length; i++) {
-                value_fprint(file, self.as.array->data[i]);
-                if(i + 1 < self.as.array->length) fprintf(file, ", ");
-            }
-            fprintf(file, "]");
+        case VALUE_OBJECT:
+            object_fprint(file, self.as.object);
             break;
     }
 }
@@ -66,16 +106,4 @@ void value_print(Value self) {
 
 void value_println(Value self) {
     value_fprintln(stdout, self);
-}
-
-ValueArray value_array_new() {
-    return DYNAMIC_ARRAY_NEW(ValueArray);
-}
-
-void value_array_destruct(ValueArray self) {
-    free(self.data);
-}
-
-void value_array_push(ValueArray* self, Value value) {
-    PUSH(self, value, 16);
 }

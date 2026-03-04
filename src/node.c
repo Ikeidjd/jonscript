@@ -35,7 +35,7 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
         }
         case NODE_VAR_DECL: {
             NodeVarDecl* node = &base_node->as.var_decl;
-            fprintf(file, "NodeVarDecl: ");
+            fprintf(file, "NodeVarDecl: %s ", node->is_mutable ? "mut" : "let");
             type_fprint(file, node->var_type);
             fprintf(file, " %.*s\n", node->name.text_len, node->name.text);
             node_fprintln(file, array, node->value, indentation + 4);
@@ -46,6 +46,12 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             fprintf(file, "NodeAssignStat:\n");
             node_fprintln(file, array, node->lvalue, indentation + 4);
             node_fprintln(file, array, node->rvalue, indentation + 4);
+            break;
+        }
+        case NODE_PRINT_STAT: {
+            NodePrintStat* node = &base_node->as.print_stat;
+            fprintf(file, "NodePrintStat: %s\n", node->add_line ? "println" : "print");
+            node_fprintln(file, array, node->expr, indentation + 4);
             break;
         }
         case NODE_BIN_OP: {
@@ -98,6 +104,12 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             break;
         }
         case NODE_BOOL: {
+            NodeLiteral* node = &base_node->as.literal;
+            fprintf(file, "NodeBool: ");
+            token_fprintln(file, node->value);
+            break;
+        }
+        case NODE_STR: {
             NodeLiteral* node = &base_node->as.literal;
             fprintf(file, "NodeBool: ");
             token_fprintln(file, node->value);

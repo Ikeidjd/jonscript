@@ -37,6 +37,11 @@ typedef enum Opcode {
     OP_GE,
     OP_EQUALS,
 
+    OP_CONCAT,
+
+    OP_PRINT,
+    OP_PRINTLN,
+
     OP_JUMP,
     OP_JUMP_IF_TRUE,
     OP_JUMP_IF_FALSE

@@ -1,21 +1,16 @@
-let a: int = 0;
-let b: int = 0;
+let first_name: str = "Jon";
+let space: str = " ";
+let last_name: str = "Arbuckle";
+println("Hello, " .. (first_name .. space .. last_name));
 
-let bit_and: int = a & b;
-let bit_or: int = a | b;
+let age: int = 0;
+println("Age: " .. age);
 
-let lt: bool = a < b;
-let le: bool = a <= b;
-let eq: bool = a == b;
-let ge: bool = a >= b;
-let gt: bool = a > b;
+let sigma: bool = false;
+println("Sigma: " .. sigma);
 
-let and: bool = false && false;
-and = false && true;
-and = true && false;
-and = true && true;
+let array: str[] = ["a", "b", "c"];
+println("Array: " .. array);
 
-let or: bool = false || false;
-or = false || true;
-or = true || false;
-or = true || true;
+print("Some operation: " .. 10 + 20 - 30 * 40 / 50 % 60 .. ". ");
+print("END");

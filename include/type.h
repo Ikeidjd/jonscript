@@ -25,7 +25,8 @@ void type_println(Type* self);
 
 typedef enum {
     TYPE_INT,
-    TYPE_BOOL
+    TYPE_BOOL,
+    TYPE_STR // "Buh-but strings aren't primitive" Eh, close enough
 } PrimitiveType;
 
 typedef struct {

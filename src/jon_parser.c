@@ -20,10 +20,12 @@ typedef enum Precedence {
     PREC_OR,
     PREC_AND,
     PREC_COMP,
+    PREC_CONCAT,
     PREC_BITWISE_OR,
     PREC_BITWISE_AND,
     PREC_ADD,
-    PREC_MUL
+    PREC_MUL,
+    PREC_MEMBER_ACCESS
 } Precedence;
 
 static Precedence parser_get_cur_prec(Parser* self) {
@@ -38,6 +40,8 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_GE:
         case TOKEN_EQEQ:
             return PREC_COMP;
+        case TOKEN_DOTDOT:
+            return PREC_CONCAT;
         case TOKEN_BITWISE_OR:
             return PREC_BITWISE_OR;
         case TOKEN_BITWISE_AND:
@@ -49,8 +53,11 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_DIV:
         case TOKEN_MOD:
             return PREC_MUL;
+        case TOKEN_DOT:
+            return PREC_MEMBER_ACCESS;
         case TOKEN_EOF:
         case TOKEN_INT:
+        case TOKEN_STR:
         case TOKEN_EQUAL:
         case TOKEN_COMMA:
         case TOKEN_COLON:
@@ -64,8 +71,11 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_IDENTIFIER:
         case TOKEN_KEYWORD_LET:
         case TOKEN_KEYWORD_MUT:
+        case TOKEN_KEYWORD_PRINT:
+        case TOKEN_KEYWORD_PRINTLN:
         case TOKEN_KEYWORD_INT:
         case TOKEN_KEYWORD_BOOL:
+        case TOKEN_KEYWORD_STR:
         case TOKEN_KEYWORD_TRUE:
         case TOKEN_KEYWORD_FALSE:
             return PREC_NONE;
@@ -82,9 +92,13 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             node = node_array_push(&self->nodes, NODE_INT);
             GET(node).as.literal.value = token;
             break;
+        case TOKEN_STR:
+            node = node_array_push(&self->nodes, NODE_STR);
+            GET(node).as.literal.value = token;
+            break;
         case TOKEN_PAREN_LEFT:
             node = PROPAGATE_ERROR(parse_expr(self));
-            parser_consume(self, TOKEN_PAREN_RIGHT, "')'");
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_RIGHT, "')'"));
             break;
         case TOKEN_BRACKET_LEFT:
             if(!parser_peek_matches(self, TOKEN_BRACKET_RIGHT)) {
@@ -115,7 +129,7 @@ static NodeIndex parse_prefix_expr(Parser* self) {
                     }
                 }
             }
-            parser_consume(self, TOKEN_BRACKET_RIGHT, "']'");
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_BRACKET_RIGHT, "']'"));
             break;
         case TOKEN_IDENTIFIER:
             node = node_array_push(&self->nodes, NODE_VAR);
@@ -179,6 +193,9 @@ static Type* parse_type(Parser* self) {
         case TOKEN_KEYWORD_BOOL:
             type = (Type*) primitive_type_new(&self->nodes.type_hash_set, TYPE_BOOL);
             break;
+        case TOKEN_KEYWORD_STR:
+            type = (Type*) primitive_type_new(&self->nodes.type_hash_set, TYPE_STR);
+            break;
         default:
             parser_error_string(self, "type");
             return NULL;
@@ -192,12 +209,12 @@ static Type* parse_type(Parser* self) {
     return type;
 }
 
-// Doesn't include the 'let' or 'mut' keyword, since we advance past that one before calling this function
 static NodeIndex parse_var_decl(Parser* self) {
     // Oh God... I have been operating under the assumption that self->nodes wasn't gonna get resized in the middle of the function and therefore invalidate Node* node, but that's wrong ._.
     // I'll have to modify node_array_push to return an index now and I'll have to always work with indices (during parsing, anyway)
     NodeIndex node = node_array_push(&self->nodes, NODE_VAR_DECL);
 
+    GET(node).as.var_decl.is_mutable = parser_advance(self).type == TOKEN_KEYWORD_MUT;
     GET(node).as.var_decl.name = PROPAGATE_ERROR(parser_consume(self, TOKEN_IDENTIFIER, "identifier"));
     PROPAGATE_ERROR(parser_consume(self, TOKEN_COLON, "':'"));
     GET(node).as.var_decl.var_type = PROPAGATE_ERROR(parse_type(self));
@@ -232,22 +249,46 @@ static NodeIndex parse_assign_stat(Parser* self) {
     return node;
 }
 
+static NodeIndex parse_print_stat(Parser* self) {
+    NodeIndex node = node_array_push(&self->nodes, NODE_PRINT_STAT);
+
+    token_println(parser_peek(self));
+    GET(node).as.print_stat.add_line = parser_advance(self).type == TOKEN_KEYWORD_PRINTLN;
+    token_println(parser_peek(self));
+    printf("\n");
+    GET(node).as.print_stat.expr = PROPAGATE_ERROR(parse_expr(self));
+
+    parser_consume(self, TOKEN_SEMICOLON, "';'");
+    return node;
+}
+
 static NodeIndex parse_program(Parser* self) {
     NodeIndex node = node_array_push(&self->nodes, NODE_PROGRAM);
     GET(node).as.program = DYNAMIC_ARRAY_NEW(NodeProgram);
 
     while(!parser_matches(self, TOKEN_EOF)) {
-        NodeIndex decl;
+        NodeIndex decl_or_stat;
 
-        if(parser_matches(self, TOKEN_KEYWORD_LET) || parser_matches(self, TOKEN_KEYWORD_MUT)) decl = parse_var_decl(self);
-        else if(parser_peek_matches(self, TOKEN_IDENTIFIER)) decl = parse_assign_stat(self);
-        else {
-            parser_advance(self);
-            parser_error_string(self, "statement or declaration");
+        switch(parser_peek(self).type) {
+            case TOKEN_KEYWORD_LET:
+            case TOKEN_KEYWORD_MUT:
+                decl_or_stat = parse_var_decl(self);
+                break;
+            case TOKEN_IDENTIFIER:
+                decl_or_stat = parse_assign_stat(self);
+                break;
+            case TOKEN_KEYWORD_PRINT:
+            case TOKEN_KEYWORD_PRINTLN:
+                decl_or_stat = parse_print_stat(self);
+                break;
+            default:
+                parser_advance(self);
+                parser_error_string(self, "statement or declaration");
+                break;
         }
 
         if(self->panic_mode) parser_sync(self);
-        else PUSH(&GET(node).as.program, decl, 16);
+        else PUSH(&GET(node).as.program, decl_or_stat, 16);
     }
 
     return node;
