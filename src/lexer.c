@@ -157,7 +157,7 @@ static void lexer_add_int_token(Lexer* self) {
 static bool lexer_add_keyword_token(Lexer* self, size_t length, char* expected, TokenType type) {
     if(length == 0) {
         if(isalpha(lexer_peek(self))) return false;
-        else self->cur--;
+        else if(expected == NULL) self->cur--;
     }
 
     for(size_t i = 0; i < length; i++) {
@@ -176,14 +176,35 @@ static bool is_identifier_char(char c) {
 static void lexer_add_identifier_token(Lexer* self) {
     switch(lexer_prev(self)) {
     case 'b':
-        if(lexer_add_keyword_token(self, 3, "ool", TOKEN_KEYWORD_BOOL)) return;
+        if(lexer_add_keyword_token(self, 3, "ool", TOKEN_KEYWORD_BOOL)) return;      
         break;
+    case 'd':
+        if(lexer_add_keyword_token(self, 1, "o", TOKEN_KEYWORD_DO)) return;
+        break;
+    case 'e':
+        switch(lexer_advance(self)) {
+        case 'l':
+            switch(lexer_advance(self)) {
+            case 'i':
+                if(lexer_add_keyword_token(self, 1, "f", TOKEN_KEYWORD_ELIF)) return;
+                break;
+            case 's':
+                if(lexer_add_keyword_token(self, 1, "e", TOKEN_KEYWORD_ELSE)) return;
+                break;
+            }
+        }
     case 'f':
         if(lexer_add_keyword_token(self, 4, "alse", TOKEN_KEYWORD_FALSE)) return;
         break;
     case 'i':
-        if(lexer_add_keyword_token(self, 2, "nt", TOKEN_KEYWORD_INT)) return;
-        break;
+        switch(lexer_advance(self)) {
+        case 'f':
+            if(lexer_add_keyword_token(self, 0, "", TOKEN_KEYWORD_IF)) return;
+            break;
+        case 'n':
+            if(lexer_add_keyword_token(self, 1, "t", TOKEN_KEYWORD_INT)) return;
+            break;
+        }
     case 'l':
         if(lexer_add_keyword_token(self, 2, "et", TOKEN_KEYWORD_LET)) return;
         break;
@@ -204,7 +225,7 @@ static void lexer_add_identifier_token(Lexer* self) {
                             if(lexer_add_keyword_token(self, 1, "n", TOKEN_KEYWORD_PRINTLN)) return;
                             break;
                         default:
-                            if(lexer_add_keyword_token(self, 0, "", TOKEN_KEYWORD_PRINT)) return;
+                            if(lexer_add_keyword_token(self, 0, NULL, TOKEN_KEYWORD_PRINT)) return;
                             break;
                         }
                     }

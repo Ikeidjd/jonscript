@@ -12,17 +12,17 @@ int main() {
     Chunk chunk = chunk_new();
 
     TokenArray tokens = lex("res/main.jon", &had_error);
-    if(had_error) goto End;
+    if(had_error) goto End1;
     // for(size_t i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
     // printf("\n");
 
     nodes = parse(&tokens, &had_error);
-    if(had_error) goto End;
+    if(had_error) goto End1;
     node_array_println(&nodes);
     printf("\n");
 
     analyze(&nodes, &had_error);
-    if(had_error) goto End;
+    if(had_error) goto End1;
     node_array_println(&nodes);
     printf("\n");
 
@@ -30,13 +30,13 @@ int main() {
 End1:
     token_array_destruct(tokens);
     node_array_destruct(nodes);
-    if(had_error) goto End;
+    if(had_error) goto End2;
     chunk_disassemble(&chunk);
     printf("\n");
 
     run(&chunk);
 
-    End:
+End2:
     chunk_destruct(chunk);
 
     return 0;

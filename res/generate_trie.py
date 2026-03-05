@@ -7,13 +7,17 @@ keywords = [
     "false",
     "str",
     "print",
-    "println"
+    "println",
+    "if",
+    "elif",
+    "else",
+    "do"
 ]
 
 tab = "    "
 
 
-def main(keywords: list[str] = keywords, letter_index: int = 0, indent: str = ""):
+def main(keywords: list[str] = keywords, letter_index: int = 0, indent: str = "    "):
     keywords.sort()
     print(f"{indent}switch(lexer_advance(self)) {{" if letter_index > 0 else f"{indent}switch(lexer_prev(self)) {{")
     for n in range(0, 27):
@@ -31,7 +35,7 @@ def main(keywords: list[str] = keywords, letter_index: int = 0, indent: str = ""
             kw = [keyword for keyword in keywords if letter_index >= len(keyword)]
             if len(kw) == 1:
                 print(f"{indent}default:")
-                print(f'{indent + tab}if(lexer_add_keyword_token(self, 0, "", {"TOKEN_KEYWORD_" + kw[0].upper()})) return;')
+                print(f'{indent + tab}if(lexer_add_keyword_token(self, 0, NULL, {"TOKEN_KEYWORD_" + kw[0].upper()})) return;')
                 print(f"{indent + tab}break;")
     print(f"{indent}}}")
 

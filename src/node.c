@@ -54,6 +54,14 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             node_fprintln(file, array, node->expr, indentation + 4);
             break;
         }
+        case NODE_IF_STAT: {
+            NodeIfStat* node = &base_node->as.if_stat;
+            fprintf(file, "NodeIfStat: %s\n", node->has_else_body ? "if-else" : "if");
+            node_fprintln(file, array, node->cond, indentation + 4);
+            node_fprintln(file, array, node->body, indentation + 4);
+            if(node->has_else_body) node_fprintln(file, array, node->else_body, indentation + 4);
+            break;
+        }
         case NODE_BIN_OP: {
             NodeBinOp* node = &base_node->as.bin_op;
             fprintf(file, "NodeBinOp: ");
@@ -111,7 +119,7 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
         }
         case NODE_STR: {
             NodeLiteral* node = &base_node->as.literal;
-            fprintf(file, "NodeBool: ");
+            fprintf(file, "NodeStr: ");
             token_fprintln(file, node->value);
             break;
         }

@@ -80,6 +80,15 @@ static void semen_non_int_length_error(Semen* self, Token pos, Type* type) {
     fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
+static void semen_non_bool_condition_error(Semen* self, Token pos, Type* type) {
+    semen_signal_error(self);
+    fprintf(stderr, "Condition should be ");
+    primitive_type_fprint(stderr, TYPE_BOOL);
+    fprintf(stderr, ", but was ");
+    type_fprint(stderr, type);
+    fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
+}
+
 static void semen_not_found_error(Semen* self, Token name) {
     semen_signal_error(self);
     fprintf(stderr, "Variable %.*s not found on line %d, pos %d.\n", name.text_len, name.text, name.line, name.pos);
@@ -137,6 +146,23 @@ static Type* anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* nod
 
 static Type* anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
     ANAL(node->expr);
+    return NULL;
+}
+
+static Type* anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
+    Type* cond_type = anal(self, nodes, node->cond);
+    if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_non_bool_condition_error(self, node->if_token, cond_type);
+
+    bool panic_mode = self->panic_mode;
+    self->panic_mode = false;
+
+    anal(self, nodes, node->body);
+    panic_mode |= self->panic_mode;
+    self->panic_mode = false;
+
+    ANAL(node->else_body);
+
+    self->panic_mode = panic_mode;
     return NULL;
 }
 
@@ -248,6 +274,7 @@ static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
         case NODE_PROGRAM: return anal_program(self, nodes, &node->as.program);
         case NODE_ASSIGN_STAT: return anal_assign_stat(self, nodes, &node->as.assign_stat);
         case NODE_PRINT_STAT: return anal_print_stat(self, nodes, &node->as.print_stat);
+        case NODE_IF_STAT: return anal_if_stat(self, nodes, &node->as.if_stat);
         case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);

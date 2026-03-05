@@ -128,6 +128,18 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_KEYWORD_PRINTLN:
             fprintf(file, "TOKEN_KEYWORD_PRINTLN");
             break;
+        case TOKEN_KEYWORD_IF:
+            fprintf(file, "TOKEN_KEYWORD_IF");
+            break;
+        case TOKEN_KEYWORD_ELIF:
+            fprintf(file, "TOKEN_KEYWORD_ELIF");
+            break;
+        case TOKEN_KEYWORD_ELSE:
+            fprintf(file, "TOKEN_KEYWORD_IF");
+            break;
+        case TOKEN_KEYWORD_DO:
+            fprintf(file, "TOKEN_KEYWORD_DO");
+            break;
         case TOKEN_KEYWORD_INT:
             fprintf(file, "TOKEN_KEYWORD_INT");
             break;

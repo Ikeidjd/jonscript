@@ -93,6 +93,9 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_JUMP_IF_FALSE:
             fprintf(file, "OP_JUMP_IF_FALSE");
             break;
+        case OP_JUMP_IF_FALSE_POP:
+            fprintf(file, "OP_JUMP_IF_FALSE_POP");
+            break;
     }
 }
 

@@ -30,6 +30,14 @@ typedef struct NodePrintStat {
     bool add_line;
 } NodePrintStat;
 
+typedef struct NodeIfStat {
+    Token if_token;
+    NodeIndex cond;
+    NodeIndex body;
+    NodeIndex else_body;
+    bool has_else_body;
+} NodeIfStat;
+
 typedef struct NodeBinOp {
     Token op;
     NodeIndex left;
@@ -73,6 +81,7 @@ typedef enum NodeType {
 
     NODE_ASSIGN_STAT,
     NODE_PRINT_STAT,
+    NODE_IF_STAT,
 
     NODE_BIN_OP,
     NODE_LOGICAL_OP,
@@ -95,6 +104,7 @@ typedef struct Node {
 
         NodeAssignStat assign_stat;
         NodePrintStat print_stat;
+        NodeIfStat if_stat;
 
         NodeBinOp bin_op;
         NodeIndexOp index_op;

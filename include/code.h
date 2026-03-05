@@ -44,7 +44,8 @@ typedef enum Opcode {
 
     OP_JUMP,
     OP_JUMP_IF_TRUE,
-    OP_JUMP_IF_FALSE
+    OP_JUMP_IF_FALSE,
+    OP_JUMP_IF_FALSE_POP
 } Opcode;
 
 void opcode_fprint(FILE* file, Opcode self);

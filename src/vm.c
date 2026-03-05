@@ -243,6 +243,10 @@ do { \
             case OP_JUMP_IF_FALSE:
                 JUMP(!vm_top(self).as.boolean);
                 break;
+            case OP_JUMP_IF_FALSE_POP:
+                JUMP(!vm_top(self).as.boolean);
+                vm_pop(self);
+                break;
         }
     }
 }
@@ -258,7 +262,7 @@ void run(Chunk* chunk) {
         value_print(self->stack[i]);
         printf("]");
     }
-    printf("\n");
+    printf("\n\n");
 
     vm_free(self);
 }

@@ -23,6 +23,21 @@ static void comp_print_stat(Chunk* self, NodeArray* nodes, NodePrintStat* node) 
     code_emit(&self->code, node->add_line ? OP_PRINTLN : OP_PRINT);
 }
 
+static void comp_if_stat(Chunk* self, NodeArray* nodes, NodeIfStat* node) {
+    comp(self, nodes, node->cond);
+    size_t if_jump = code_emit_jump(&self->code, OP_JUMP_IF_FALSE_POP);
+    comp(self, nodes, node->body);
+
+    if(node->has_else_body) {
+        size_t else_jump = code_emit_jump(&self->code, OP_JUMP);
+        code_patch_jump(&self->code, if_jump);
+        comp(self, nodes, node->else_body);
+        code_patch_jump(&self->code, else_jump);
+    } else {
+        code_patch_jump(&self->code, if_jump);
+    }
+}
+
 static void comp_bin_op(Chunk* self, NodeArray* nodes, NodeBinOp* node) {
     comp(self, nodes, node->left);
     comp(self, nodes, node->right);
@@ -143,6 +158,9 @@ static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index) {
             break;
         case NODE_PRINT_STAT:
             comp_print_stat(self, nodes, &node->as.print_stat);
+            break;
+        case NODE_IF_STAT:
+            comp_if_stat(self, nodes, &node->as.if_stat);
             break;
         case NODE_BIN_OP:
             comp_bin_op(self, nodes, &node->as.bin_op);

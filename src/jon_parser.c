@@ -73,6 +73,10 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_KEYWORD_MUT:
         case TOKEN_KEYWORD_PRINT:
         case TOKEN_KEYWORD_PRINTLN:
+        case TOKEN_KEYWORD_IF:
+        case TOKEN_KEYWORD_ELIF:
+        case TOKEN_KEYWORD_ELSE:
+        case TOKEN_KEYWORD_DO:
         case TOKEN_KEYWORD_INT:
         case TOKEN_KEYWORD_BOOL:
         case TOKEN_KEYWORD_STR:
@@ -252,14 +256,52 @@ static NodeIndex parse_assign_stat(Parser* self) {
 static NodeIndex parse_print_stat(Parser* self) {
     NodeIndex node = node_array_push(&self->nodes, NODE_PRINT_STAT);
 
-    token_println(parser_peek(self));
     GET(node).as.print_stat.add_line = parser_advance(self).type == TOKEN_KEYWORD_PRINTLN;
-    token_println(parser_peek(self));
-    printf("\n");
     GET(node).as.print_stat.expr = PROPAGATE_ERROR(parse_expr(self));
 
     parser_consume(self, TOKEN_SEMICOLON, "';'");
     return node;
+}
+
+static NodeIndex parse_stat(Parser* self);
+
+static NodeIndex parse_if_stat(Parser* self) {
+    NodeIndex node = node_array_push(&self->nodes, NODE_IF_STAT);
+
+    GET(node).as.if_stat.if_token = parser_advance(self);
+    GET(node).as.if_stat.cond = PROPAGATE_ERROR(parse_expr(self));
+    PROPAGATE_ERROR(parser_consume(self, TOKEN_KEYWORD_DO, "'do'"));
+    GET(node).as.if_stat.body = PROPAGATE_ERROR(parse_stat(self));
+
+    if(parser_peek_matches(self, TOKEN_KEYWORD_ELIF)) {
+        GET(node).as.if_stat.else_body = PROPAGATE_ERROR(parse_if_stat(self));
+        GET(node).as.if_stat.has_else_body = true;
+    }
+    else if(parser_matches(self, TOKEN_KEYWORD_ELSE)) {
+        PROPAGATE_ERROR(parser_consume(self, TOKEN_KEYWORD_DO, "'do'"));
+        GET(node).as.if_stat.else_body = PROPAGATE_ERROR(parse_stat(self));
+        GET(node).as.if_stat.has_else_body = true;
+    } else {
+        GET(node).as.if_stat.has_else_body = false;
+    }
+
+    return node;
+}
+
+static NodeIndex parse_stat(Parser* self) {
+    switch(parser_peek(self).type) {
+        case TOKEN_IDENTIFIER:
+            return parse_assign_stat(self);
+        case TOKEN_KEYWORD_PRINT:
+        case TOKEN_KEYWORD_PRINTLN:
+            return parse_print_stat(self);
+        case TOKEN_KEYWORD_IF:
+            return parse_if_stat(self);
+        default:
+            parser_advance(self);
+            parser_error_string(self, "statement");
+            return 0;
+    }
 }
 
 static NodeIndex parse_program(Parser* self) {
@@ -275,11 +317,10 @@ static NodeIndex parse_program(Parser* self) {
                 decl_or_stat = parse_var_decl(self);
                 break;
             case TOKEN_IDENTIFIER:
-                decl_or_stat = parse_assign_stat(self);
-                break;
             case TOKEN_KEYWORD_PRINT:
             case TOKEN_KEYWORD_PRINTLN:
-                decl_or_stat = parse_print_stat(self);
+            case TOKEN_KEYWORD_IF:
+                decl_or_stat = parse_stat(self);
                 break;
             default:
                 parser_advance(self);

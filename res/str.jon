@@ -1,0 +1,16 @@
+let first_name: str = "Jon";
+let space: str = " ";
+let last_name: str = "Arbuckle";
+println("Hello, " .. (first_name .. space .. last_name));
+
+let age: int = 0;
+println("Age: " .. age);
+
+let sigma: bool = false;
+println("Sigma: " .. sigma);
+
+let array: str[] = ["a", "b", "c"];
+println("Array: " .. array);
+
+print("Some operation: " .. 10 + 20 - 30 * 40 / 50 % 60 .. ". ");
+print("END");

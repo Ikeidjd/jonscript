@@ -1,5 +1,0 @@
-let age: int = 0;
-
-if age < 18 do print("CHILD");
-else if age == 18 do print("You're on thin ice, pal");
-else do print("THE ELDERLY");
