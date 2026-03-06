@@ -79,6 +79,7 @@ typedef struct Token {
 
 typedef struct TokenArray {
     char* const string_data;
+    size_t string_data_length;
     Token* data;
     size_t length;
     size_t capacity;
@@ -94,6 +95,6 @@ void token_type_fprintln(FILE* file, TokenType self);
 void token_type_print(TokenType self);
 void token_type_println(TokenType self);
 
-TokenArray token_array_new(char* string_data); // This takes ownership of string_data
+TokenArray token_array_new(char* string_data, size_t string_data_length); // This takes ownership of string_data
 void token_array_push(TokenArray* self, Token token);
 void token_array_destruct(TokenArray self);

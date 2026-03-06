@@ -174,9 +174,10 @@ void token_type_println(TokenType self) {
     token_type_fprintln(stdout, self);
 }
 
-TokenArray token_array_new(char* string_data) {
+TokenArray token_array_new(char* string_data, size_t string_data_length) {
     return (TokenArray) {
         .string_data = string_data,
+        .string_data_length = string_data_length,
         DYNAMIC_ARRAY_NEW_PARTIAL()
     };
 }

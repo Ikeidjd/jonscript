@@ -24,7 +24,7 @@ typedef enum LexerError {
 } LexerError;
 
 // Remember to free() returned buffer
-static char* read_file(const char* filepath) {
+static char* read_file(const char* filepath, size_t* out_length) {
     /*
     I HATE CRLF. So, an error happened when I tried to read a file with more than one line. The final char was -51. WHAT?
     So, what I think happened is it was giving me the length while counting \r as a character, but then when reading, it was ignoring \r, therefore reading an extra char. WHY?
@@ -53,12 +53,15 @@ static char* read_file(const char* filepath) {
     fread(buffer, sizeof(char), length, file);
     fclose(file);
 
+    *out_length = length;
     return buffer;
 }
 
 static Lexer lexer_new(const char* filepath) {
+    size_t string_data_length;
+    char* string_data = read_file(filepath, &string_data_length);
     return (Lexer) {
-        .tokens = token_array_new(read_file(filepath)),
+        .tokens = token_array_new(string_data, string_data_length),
         .start_cur = 0,
         .start_line = 1,
         .start_pos = 1,
@@ -92,6 +95,10 @@ static char lexer_prev(Lexer* self) {
 
 static char lexer_peek(Lexer* self) {
     return self->tokens.string_data[self->cur];
+}
+
+static char lexer_peek_from_start(Lexer* self, size_t offset) {
+    return self->start_cur + offset < self->tokens.string_data_length ? self->tokens.string_data[self->start_cur + offset] : '\0';
 }
 
 static char lexer_advance(Lexer* self) {
@@ -158,82 +165,75 @@ static void lexer_add_int_token(Lexer* self) {
     lexer_add_token(self, TOKEN_INT);
 }
 
-static bool lexer_add_keyword_token(Lexer* self, size_t length, char* expected, TokenType type) {
-    if(length == 0) {
-        if(isalpha(lexer_peek(self))) return false;
-        // Terrible hack
-        else if(expected == NULL) {
-            self->cur--;
-            self->pos--;
-        }
-    }
-
-    for(size_t i = 0; i < length; i++) {
-        if(lexer_peek(self) != expected[i]) return false;
-        lexer_advance(self);
-    }
-
-    lexer_add_token(self, type);
-    return true;
-}
-
 static bool is_identifier_char(char c) {
     return isalnum(c) || c == '_';
 }
 
+static bool lexer_add_keyword_token(Lexer* self, size_t start, size_t length, char* expected, TokenType type) {
+    for(size_t i = start; i < length; i++) {
+        if(lexer_peek_from_start(self, i) != expected[i - start]) return false;
+    }
+
+    if(is_identifier_char(lexer_peek_from_start(self, length))) return false;
+
+    self->cur = self->start_cur + length;
+    lexer_add_token(self, type);
+    return true;
+}
+
 static void lexer_add_identifier_token(Lexer* self) {
-    switch(lexer_prev(self)) {
+    switch(lexer_peek_from_start(self, 0)) {
     case 'b':
-        if(lexer_add_keyword_token(self, 3, "ool", TOKEN_KEYWORD_BOOL)) return;
+        if(lexer_add_keyword_token(self, 1, 4, "ool", TOKEN_KEYWORD_BOOL)) return;
         break;
     case 'd':
-        if(lexer_add_keyword_token(self, 1, "o", TOKEN_KEYWORD_DO)) return;    
+        if(lexer_add_keyword_token(self, 1, 2, "o", TOKEN_KEYWORD_DO)) return;
         break;
     case 'e':
-        switch(lexer_advance(self)) {
+        switch(lexer_peek_from_start(self, 1)) {
         case 'l':
-            switch(lexer_advance(self)) {
+            switch(lexer_peek_from_start(self, 2)) {
             case 'i':
-                if(lexer_add_keyword_token(self, 1, "f", TOKEN_KEYWORD_ELIF)) return;
+                if(lexer_add_keyword_token(self, 3, 4, "f", TOKEN_KEYWORD_ELIF)) return;
                 break;
             case 's':
-                if(lexer_add_keyword_token(self, 1, "e", TOKEN_KEYWORD_ELSE)) return;
+                if(lexer_add_keyword_token(self, 3, 4, "e", TOKEN_KEYWORD_ELSE)) return;
                 break;
             }
         }
     case 'f':
-        if(lexer_add_keyword_token(self, 4, "alse", TOKEN_KEYWORD_FALSE)) return;
+        if(lexer_add_keyword_token(self, 1, 5, "alse", TOKEN_KEYWORD_FALSE)) return;
         break;
     case 'i':
-        switch(lexer_advance(self)) {
+        switch(lexer_peek_from_start(self, 1)) {
         case 'f':
-            if(lexer_add_keyword_token(self, 0, "", TOKEN_KEYWORD_IF)) return;
+            if(lexer_add_keyword_token(self, 2, 2, "", TOKEN_KEYWORD_IF)) return;
             break;
         case 'n':
-            if(lexer_add_keyword_token(self, 1, "t", TOKEN_KEYWORD_INT)) return;
+            if(lexer_add_keyword_token(self, 2, 3, "t", TOKEN_KEYWORD_INT)) return;
             break;
         }
     case 'l':
-        if(lexer_add_keyword_token(self, 2, "et", TOKEN_KEYWORD_LET)) return;
+        if(lexer_add_keyword_token(self, 1, 3, "et", TOKEN_KEYWORD_LET)) return;
         break;
     case 'm':
-        if(lexer_add_keyword_token(self, 2, "ut", TOKEN_KEYWORD_MUT)) return;
+        if(lexer_add_keyword_token(self, 1, 3, "ut", TOKEN_KEYWORD_MUT)) return;
         break;
     case 'p':
-        switch(lexer_advance(self)) {
+        switch(lexer_peek_from_start(self, 1)) {
         case 'r':
-            switch(lexer_advance(self)) {
+            switch(lexer_peek_from_start(self, 2)) {
             case 'i':
-                switch(lexer_advance(self)) {
+                switch(lexer_peek_from_start(self, 3)) {
                 case 'n':
-                    switch(lexer_advance(self)) {
+                    switch(lexer_peek_from_start(self, 4)) {
                     case 't':
-                        switch(lexer_advance(self)) {
+                        switch(lexer_peek_from_start(self, 5)) {
                         case 'l':
-                            if(lexer_add_keyword_token(self, 1, "n", TOKEN_KEYWORD_PRINTLN)) return;
+                            if(lexer_add_keyword_token(self, 6, 7, "n", TOKEN_KEYWORD_PRINTLN)) return; // Haha, six seven
                             break;
                         default:
-                            if(lexer_add_keyword_token(self, 0, NULL, TOKEN_KEYWORD_PRINT)) return;
+                            if(lexer_add_keyword_token(self, 5, 5, "", TOKEN_KEYWORD_PRINT)) return;
                             break;
                         }
                     }
@@ -241,20 +241,14 @@ static void lexer_add_identifier_token(Lexer* self) {
             }
         }
     case 's':
-        if(lexer_add_keyword_token(self, 2, "tr", TOKEN_KEYWORD_STR)) return;
+        if(lexer_add_keyword_token(self, 1, 3, "tr", TOKEN_KEYWORD_STR)) return;
         break;
     case 't':
-        if(lexer_add_keyword_token(self, 3, "rue", TOKEN_KEYWORD_TRUE)) return;
+        if(lexer_add_keyword_token(self, 1, 4, "rue", TOKEN_KEYWORD_TRUE)) return;
         break;
     case 'w':
-        if(lexer_add_keyword_token(self, 4, "hile", TOKEN_KEYWORD_WHILE)) return;
+        if(lexer_add_keyword_token(self, 1, 5, "hile", TOKEN_KEYWORD_WHILE)) return;
         break;
-    }
-
-    // Terrible hack
-    if(!is_identifier_char(lexer_peek(self))) {
-        self->cur--;
-        self->pos--;
     }
 
     while(is_identifier_char(lexer_peek(self))) lexer_advance(self);
@@ -347,5 +341,5 @@ TokenArray lex(const char* filepath, bool* had_error) {
     lexer_add_token(&self, TOKEN_EOF);
 
     *had_error = self.had_error;
-    return self.had_error ? token_array_new(NULL) : self.tokens;
+    return self.had_error ? token_array_new(NULL, 0) : self.tokens;
 }
