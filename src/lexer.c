@@ -184,10 +184,10 @@ static bool is_identifier_char(char c) {
 static void lexer_add_identifier_token(Lexer* self) {
     switch(lexer_prev(self)) {
     case 'b':
-        if(lexer_add_keyword_token(self, 3, "ool", TOKEN_KEYWORD_BOOL)) return;      
+        if(lexer_add_keyword_token(self, 3, "ool", TOKEN_KEYWORD_BOOL)) return;
         break;
     case 'd':
-        if(lexer_add_keyword_token(self, 1, "o", TOKEN_KEYWORD_DO)) return;
+        if(lexer_add_keyword_token(self, 1, "o", TOKEN_KEYWORD_DO)) return;    
         break;
     case 'e':
         switch(lexer_advance(self)) {
@@ -245,6 +245,9 @@ static void lexer_add_identifier_token(Lexer* self) {
         break;
     case 't':
         if(lexer_add_keyword_token(self, 3, "rue", TOKEN_KEYWORD_TRUE)) return;
+        break;
+    case 'w':
+        if(lexer_add_keyword_token(self, 4, "hile", TOKEN_KEYWORD_WHILE)) return;
         break;
     }
 

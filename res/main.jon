@@ -1,13 +1,6 @@
-mut name: str = "Jon";
-mut success: bool = false;
-mut maxwell_gaming: bool = false;
+mut i: int = 0;
 
-if name == "J" .. "o" .. "n" {
-    println("Yea");
-    success = true;
-} elif name == "Maxwell Gaming" {
-    println("Who is this guy, bro?");
-    maxwell_gaming = true;
-} else do println("You need to leave");
-
-print("END");
+while(i < 10) {
+    println(i);
+    i = i + 1;
+}

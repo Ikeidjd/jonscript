@@ -11,6 +11,7 @@ keywords = [
     "if",
     "elif",
     "else",
+    "while",
     "do"
 ]
 

@@ -88,6 +88,7 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_JUMP_IF_TRUE:
         case OP_JUMP_IF_FALSE:
         case OP_JUMP_IF_FALSE_POP:
+        case OP_LOOP:
             return chunk_display_monoarg_op(self, op, 2, offset);
     }
 }

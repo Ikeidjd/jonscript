@@ -62,6 +62,13 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             if(node->has_else_body) node_fprintln(file, array, node->else_body, indentation + 4);
             break;
         }
+        case NODE_WHILE_STAT: {
+            NodeWhileStat* node = &base_node->as.while_stat;
+            fprintf(file, "NodeWhileStat:\n");
+            node_fprintln(file, array, node->cond, indentation + 4);
+            node_fprintln(file, array, node->body, indentation + 4);
+            break;
+        }
         case NODE_BIN_OP: {
             NodeBinOp* node = &base_node->as.bin_op;
             fprintf(file, "NodeBinOp: ");

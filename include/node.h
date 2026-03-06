@@ -40,6 +40,12 @@ typedef struct NodeIfStat {
     bool has_else_body;
 } NodeIfStat;
 
+typedef struct NodeWhileStat {
+    Token while_token;
+    NodeIndex cond;
+    NodeIndex body;
+} NodeWhileStat;
+
 typedef struct NodeBinOp {
     Token op;
     NodeIndex left;
@@ -84,6 +90,7 @@ typedef enum NodeType {
     NODE_ASSIGN_STAT,
     NODE_PRINT_STAT,
     NODE_IF_STAT,
+    NODE_WHILE_STAT,
 
     NODE_BIN_OP,
     NODE_LOGICAL_OP,
@@ -107,6 +114,7 @@ typedef struct Node {
         NodeAssignStat assign_stat;
         NodePrintStat print_stat;
         NodeIfStat if_stat;
+        NodeWhileStat while_stat;
 
         NodeBinOp bin_op;
         NodeIndexOp index_op;

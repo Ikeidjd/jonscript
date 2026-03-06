@@ -9,8 +9,8 @@
     statement; \
     if(self->panic_mode) return VOID
 
-#define ANAL(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index).type)
-#define ANAL_WITH_MUTABILITY(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index))
+#define ANAL_GET_TYPE(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index).type)
+#define ANAL(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index))
 
 #define TYPE_MUT_OF(type) (TypeMut) { type, false }
 #define TYPE_MUT_OF_MUTABILITY(type, is_mutable) (TypeMut) { type, is_mutable }
@@ -153,7 +153,7 @@ static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
 }
 
 static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
-    Type* value_type = ANAL(node->value);
+    Type* value_type = ANAL_GET_TYPE(node->value);
 
     semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
     if(node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
@@ -162,8 +162,8 @@ static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
 }
 
 static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* node) {
-    TypeMut var = ANAL_WITH_MUTABILITY(node->lvalue);
-    Type* value_type = ANAL(node->rvalue);
+    TypeMut var = ANAL(node->lvalue);
+    Type* value_type = ANAL_GET_TYPE(node->rvalue);
 
     if(!var.is_mutable) semen_mutability_error(self, node->equals);
     else if(var.type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, var.type, value_type);
@@ -172,7 +172,7 @@ static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* n
 }
 
 static TypeMut anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
-    ANAL_WITH_MUTABILITY(node->expr);
+    ANAL(node->expr);
     return VOID;
 }
 
@@ -184,18 +184,35 @@ static TypeMut anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
     self->panic_mode = false;
 
     anal(self, nodes, node->body);
-    panic_mode |= self->panic_mode;
+
+    if(node->has_else_body) {
+        panic_mode |= self->panic_mode;
+        self->panic_mode = false;
+
+        ANAL(node->else_body);
+
+        self->panic_mode = panic_mode;
+    }
+
+    return VOID;
+}
+
+static TypeMut anal_while_stat(Semen* self, NodeArray* nodes, NodeWhileStat* node) {
+    Type* cond_type = anal(self, nodes, node->cond).type;
+    if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_non_bool_condition_error(self, node->while_token, cond_type);
+
+    bool panic_mode = self->panic_mode;
     self->panic_mode = false;
 
-    ANAL_WITH_MUTABILITY(node->else_body);
+    ANAL(node->body);
 
     self->panic_mode = panic_mode;
     return VOID;
 }
 
 static TypeMut anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
-    Type* left = ANAL(node->left);
-    Type* right = ANAL(node->right);
+    Type* left = ANAL_GET_TYPE(node->left);
+    Type* right = ANAL_GET_TYPE(node->right);
 
     bool is_correct_type_for_op;
     Type* out;
@@ -236,8 +253,8 @@ static TypeMut anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
 }
 
 static TypeMut anal_logical_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
-    Type* left = ANAL(node->left);
-    Type* right = ANAL(node->right);
+    Type* left = ANAL_GET_TYPE(node->left);
+    Type* right = ANAL_GET_TYPE(node->right);
 
     if(!is_primitive(left, TYPE_BOOL) || left != right) semen_error(self, SEMEN_OPERATION, node->op, left, right);
 
@@ -245,8 +262,8 @@ static TypeMut anal_logical_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
 }
 
 static TypeMut anal_index_op(Semen* self, NodeArray* nodes, NodeIndexOp* node) {
-    TypeMut left = ANAL_WITH_MUTABILITY(node->left);
-    Type* right = ANAL(node->right);
+    TypeMut left = ANAL(node->left);
+    Type* right = ANAL_GET_TYPE(node->right);
 
     if(!is_array(left.type) || !is_primitive(right, TYPE_INT)) semen_error(self, SEMEN_INDEX, node->bracket_left, left.type, right);
 
@@ -258,10 +275,10 @@ static TypeMut anal_var(Semen* self, NodeArray* nodes, NodeVar* node) {
 }
 
 static TypeMut anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayListInit* node) {
-    Type* type = ANAL(node->data[0]);
+    Type* type = ANAL_GET_TYPE(node->data[0]);
 
     for(int i = 1; i < node->length; i++) {
-        Type* type2 = ANAL(node->data[i]);
+        Type* type2 = ANAL_GET_TYPE(node->data[i]);
         if(type != type2) {
             semen_error(self, SEMEN_MISMATCH, node->bracket_left, type, type2);
             return VOID;
@@ -272,8 +289,8 @@ static TypeMut anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayList
 }
 
 static TypeMut anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLengthInit* node) {
-    Type* type = ANAL(node->expr);
-    Type* length_type = ANAL(node->length);
+    Type* type = ANAL_GET_TYPE(node->expr);
+    Type* length_type = ANAL_GET_TYPE(node->length);
 
     if(!is_primitive(length_type, TYPE_INT)) {
         semen_non_int_length_error(self, node->bracket_left, length_type);
@@ -302,6 +319,7 @@ static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
         case NODE_ASSIGN_STAT: return anal_assign_stat(self, nodes, &node->as.assign_stat);
         case NODE_PRINT_STAT: return anal_print_stat(self, nodes, &node->as.print_stat);
         case NODE_IF_STAT: return anal_if_stat(self, nodes, &node->as.if_stat);
+        case NODE_WHILE_STAT: return anal_while_stat(self, nodes, &node->as.while_stat);
         case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);

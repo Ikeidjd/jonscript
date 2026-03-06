@@ -76,6 +76,7 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_KEYWORD_IF:
         case TOKEN_KEYWORD_ELIF:
         case TOKEN_KEYWORD_ELSE:
+        case TOKEN_KEYWORD_WHILE:
         case TOKEN_KEYWORD_DO:
         case TOKEN_KEYWORD_INT:
         case TOKEN_KEYWORD_BOOL:
@@ -304,6 +305,16 @@ static NodeIndex parse_if_stat(Parser* self) {
     return node;
 }
 
+static NodeIndex parse_while_stat(Parser* self) {
+    NodeIndex node = node_array_push(&self->nodes, NODE_WHILE_STAT);
+
+    GET(node).as.while_stat.while_token = parser_advance(self);
+    GET(node).as.while_stat.cond = PROPAGATE_ERROR(parse_expr(self));
+    GET(node).as.while_stat.body = PROPAGATE_ERROR(try_parse_do_or_block_stat(self));
+
+    return node;
+}
+
 static NodeIndex parse_stat(Parser* self) {
     switch(parser_peek(self).type) {
         case TOKEN_IDENTIFIER:
@@ -313,6 +324,8 @@ static NodeIndex parse_stat(Parser* self) {
             return parse_print_stat(self);
         case TOKEN_KEYWORD_IF:
             return parse_if_stat(self);
+        case TOKEN_KEYWORD_WHILE:
+            return parse_while_stat(self);
         case TOKEN_BRACE_LEFT:
             return parse_block_stat(self);
         default:
@@ -342,6 +355,7 @@ static NodeIndex parse_program(Parser* self, bool in_block) {
             case TOKEN_KEYWORD_PRINT:
             case TOKEN_KEYWORD_PRINTLN:
             case TOKEN_KEYWORD_IF:
+            case TOKEN_KEYWORD_WHILE:
             case TOKEN_BRACE_LEFT:
                 decl_or_stat = parse_stat(self);
                 break;

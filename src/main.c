@@ -12,7 +12,7 @@ int main() {
     Chunk chunk = chunk_new();
     StrPool str_pool = str_pool_new();
 
-    TokenArray tokens = lex("res/main.jon", &had_error);
+    TokenArray tokens = lex("res/fibonacci/thirdbonacci.jon", &had_error);
     if(had_error) goto End1;
     // for(size_t i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
     // printf("\n");

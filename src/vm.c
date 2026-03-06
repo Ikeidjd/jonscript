@@ -101,9 +101,12 @@ do { \
             value_print(self->stack[i]);
             printf("]");
         }
+
         if(self->sp == 0) printf("[]");
         printf("\n");
+
         chunk_disassemble_op(chunk, ip);
+
         Opcode op = READ();
         switch(op) {
             case OP_LOAD_BYTE:
@@ -261,6 +264,11 @@ do { \
                 JUMP(!vm_top(self).as.boolean);
                 vm_pop(self);
                 break;
+            case OP_LOOP: {
+                size_t loop_length = READ();
+                loop_length |= READ() << 8;
+                ip -= loop_length + 3; // Each READ() increments ip by one, so adding 3 balances it out (the READ() that's missing here is the one that reads the opcode)
+            }
         }
     }
 }

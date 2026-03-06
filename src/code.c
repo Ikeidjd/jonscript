@@ -99,6 +99,9 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_JUMP_IF_FALSE_POP:
             fprintf(file, "OP_JUMP_IF_FALSE_POP");
             break;
+        case OP_LOOP:
+            fprintf(file, "OP_LOOP");
+            break;
     }
 }
 
@@ -138,8 +141,13 @@ size_t code_emit_jump(Code* self, Opcode opcode) {
     return jump_index;
 }
 
-void code_patch_jump(Code* self, size_t jump) {
-    uint16_t jump_arg = self->length - jump;
-    self->data[jump + 1] = jump_arg & 0xFF;
-    self->data[jump + 2] = jump_arg >> 8;
+void code_emit_loop(Code* self, size_t loop_start) {
+    uint16_t loop_length = self->length - loop_start;
+    code_emit_args(self, OP_LOOP, 2, TO_LE_2_BYTES(loop_length));
+}
+
+void code_patch_jump(Code* self, size_t jump_index) {
+    uint16_t jump_arg = self->length - jump_index;
+    self->data[jump_index + 1] = jump_arg & 0xFF;
+    self->data[jump_index + 2] = jump_arg >> 8;
 }

@@ -46,7 +46,9 @@ typedef enum Opcode {
     OP_JUMP,
     OP_JUMP_IF_TRUE,
     OP_JUMP_IF_FALSE,
-    OP_JUMP_IF_FALSE_POP
+    OP_JUMP_IF_FALSE_POP,
+
+    OP_LOOP
 } Opcode;
 
 void opcode_fprint(FILE* file, Opcode self);
@@ -67,4 +69,6 @@ void code_emit(Code* self, Opcode opcode);
 void code_emit_args(Code* self, Opcode opcode, size_t args_length, byte args[]);
 
 size_t code_emit_jump(Code* self, Opcode opcode);
-void code_patch_jump(Code* self, size_t jump);
+void code_patch_jump(Code* self, size_t jump_index);
+
+void code_emit_loop(Code* self, size_t loop_start);

@@ -51,6 +51,15 @@ static void comp_if_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIfS
     }
 }
 
+static void comp_while_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeWhileStat* node) {
+    size_t loop_start = chunk->code.length;
+    COMP(node->cond);
+    size_t cond_jump = code_emit_jump(&chunk->code, OP_JUMP_IF_FALSE_POP);
+    COMP(node->body);
+    code_emit_loop(&chunk->code, loop_start);
+    code_patch_jump(&chunk->code, cond_jump);
+}
+
 static void comp_bin_op(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeBinOp* node) {
     COMP(node->left);
     COMP(node->right);
@@ -174,6 +183,9 @@ static void comp(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndex node_
             break;
         case NODE_IF_STAT:
             comp_if_stat(self, chunk, nodes, &node->as.if_stat);
+            break;
+        case NODE_WHILE_STAT:
+            comp_while_stat(self, chunk, nodes, &node->as.while_stat);
             break;
         case NODE_BIN_OP:
             comp_bin_op(self, chunk, nodes, &node->as.bin_op);
