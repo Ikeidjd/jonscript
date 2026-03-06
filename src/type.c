@@ -29,8 +29,8 @@ TypeHashSet type_hash_set_new() {
     return (TypeHashSet) {
         .arena = arena,
         .data = NULL,
-        .occupied = 0,
-        .size = 0
+        .size = 0,
+        .occupied = 0
     };
 }
 

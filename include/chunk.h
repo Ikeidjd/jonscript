@@ -6,7 +6,7 @@
 #include "code.h"
 
 typedef struct Chunk {
-    ObjectArray values;
+    ObjectArray constants;
     Code code;
 } Chunk;
 

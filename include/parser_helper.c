@@ -75,6 +75,15 @@ static void parser_error_token_type(Parser* self, TokenType expected) {
     fprintf(stderr, " on line %d, pos %d.\n", got.line, got.pos);
 }
 
+static Token parser_peek_consume(Parser* self, TokenType expected, const char* name_of_expected) {
+    if(!parser_peek_matches(self, expected)) {
+        parser_advance(self);
+        if(name_of_expected) parser_error_string(self, name_of_expected);
+        else parser_error_token_type(self, expected);
+    }
+    return parser_peek(self);
+}
+
 static Token parser_consume(Parser* self, TokenType expected, const char* name_of_expected) {
     if(!parser_matches(self, expected)) {
         parser_advance(self);

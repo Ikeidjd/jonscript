@@ -229,6 +229,16 @@ static NodeIndex parse_var_decl(Parser* self) {
     return node;
 }
 
+static NodeIndex parse_program(Parser* self, bool in_block);
+
+static NodeIndex parse_block_stat(Parser* self) {
+    parser_advance(self);
+    self->scope++;
+    NodeIndex out = parse_program(self, true);
+    parser_consume(self, TOKEN_BRACE_RIGHT, "'}'");
+    return out;
+}
+
 static NodeIndex parse_assign_stat(Parser* self) {
     NodeIndex node = node_array_push(&self->nodes, NODE_ASSIGN_STAT);
 
@@ -265,37 +275,33 @@ static NodeIndex parse_print_stat(Parser* self) {
 
 static NodeIndex parse_stat(Parser* self);
 
+static NodeIndex try_parse_do_or_block_stat(Parser* self) {
+    if(parser_matches(self, TOKEN_KEYWORD_DO)) {
+        return parse_stat(self);
+    } else {
+        PROPAGATE_ERROR(parser_peek_consume(self, TOKEN_BRACE_LEFT, "block"));
+        return parse_block_stat(self);
+    }
+}
+
 static NodeIndex parse_if_stat(Parser* self) {
     NodeIndex node = node_array_push(&self->nodes, NODE_IF_STAT);
 
     GET(node).as.if_stat.if_token = parser_advance(self);
     GET(node).as.if_stat.cond = PROPAGATE_ERROR(parse_expr(self));
-    PROPAGATE_ERROR(parser_consume(self, TOKEN_KEYWORD_DO, "'do'"));
-    GET(node).as.if_stat.body = PROPAGATE_ERROR(parse_stat(self));
+    GET(node).as.if_stat.body = PROPAGATE_ERROR(try_parse_do_or_block_stat(self));
 
     if(parser_peek_matches(self, TOKEN_KEYWORD_ELIF)) {
         GET(node).as.if_stat.else_body = PROPAGATE_ERROR(parse_if_stat(self));
         GET(node).as.if_stat.has_else_body = true;
-    }
-    else if(parser_matches(self, TOKEN_KEYWORD_ELSE)) {
-        PROPAGATE_ERROR(parser_consume(self, TOKEN_KEYWORD_DO, "'do'"));
-        GET(node).as.if_stat.else_body = PROPAGATE_ERROR(parse_stat(self));
+    } else if(parser_matches(self, TOKEN_KEYWORD_ELSE)) {
+        GET(node).as.if_stat.else_body = PROPAGATE_ERROR(try_parse_do_or_block_stat(self));
         GET(node).as.if_stat.has_else_body = true;
     } else {
         GET(node).as.if_stat.has_else_body = false;
     }
 
     return node;
-}
-
-static NodeIndex parse_program(Parser* self, bool in_block);
-
-static NodeIndex parse_block_stat(Parser* self) {
-    parser_advance(self);
-    self->scope++;
-    NodeIndex out = parse_program(self, true);
-    parser_consume(self, TOKEN_BRACE_RIGHT, "'}'");
-    return out;
 }
 
 static NodeIndex parse_stat(Parser* self) {

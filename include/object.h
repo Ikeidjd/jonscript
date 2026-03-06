@@ -43,11 +43,12 @@ void object_array_push(ObjectArray* self, Value value);
 
 typedef struct ObjectStr {
     Object base;
+    uint64_t hash;
     char* data;
     size_t length;
 } ObjectStr;
 
-ObjectStr object_str_new(char* const data, size_t length);
+ObjectStr object_str_new(char* data, size_t length);
 
 void object_str_destruct(ObjectStr* const self);
 void object_str_free(ObjectStr* self);

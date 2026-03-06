@@ -156,9 +156,20 @@ void object_array_push(ObjectArray* self, Value value) {
     PUSH(self, value, 16);
 }
 
-ObjectStr object_str_new(char* const data, size_t length) {
+// https://stackoverflow.com/questions/7666509/hash-function-for-string
+// http://www.cse.yorku.ca/~oz/hash.html
+static uint64_t djb2(unsigned char *str, size_t length) {
+    uint64_t hash = 5381;
+
+    for(size_t i = 0; i < length; i++) hash = ((hash << 5) + hash) + str[i]; /* hash * 33 + str[i] */
+
+    return hash;
+}
+
+ObjectStr object_str_new(char* data, size_t length) {
     return (ObjectStr) {
         .base = object_new(OBJECT_STR),
+        .hash = djb2((unsigned char*) data, length),
         .data = data,
         .length = length
     };

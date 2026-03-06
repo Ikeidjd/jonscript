@@ -2,7 +2,7 @@
 
 Chunk chunk_new() {
     return (Chunk) {
-        .values = object_array_new(),
+        .constants = object_array_new(),
         .code = code_new()
     };
 }
@@ -11,10 +11,10 @@ void chunk_destruct(Chunk self) {
     code_destruct(self.code);
 
     printf("Freeing compile-time objects...\n");
-    for(size_t i = 0; i < self.values.length; i++) {
-        if(self.values.data[i].type != VALUE_OBJECT) continue;
+    for(size_t i = 0; i < self.constants.length; i++) {
+        if(self.constants.data[i].type != VALUE_OBJECT) continue;
 
-        Object* object = self.values.data[i].as.object;
+        Object* object = self.constants.data[i].as.object;
         printf("Freeing object %p of type %d: ", object, object->type);
         object_println(object);
         Object* next = object->next;
@@ -22,17 +22,13 @@ void chunk_destruct(Chunk self) {
         object = next;
     }
 
-    object_array_destruct(&self.values);
+    object_array_destruct(&self.constants);
 }
 
 void chunk_emit_load_value_op(Chunk* self, Value value) {
-    object_array_push(&self->values, value);
-    size_t index = self->values.length - 1;
+    object_array_push(&self->constants, value);
+    size_t index = self->constants.length - 1;
     code_emit_args(&self->code, OP_LOAD_VALUE, 2, TO_LE_2_BYTES(index));
-}
-
-void chunk_emit_load_str_op(Chunk* self, Token token) {
-    
 }
 
 static size_t chunk_display_monoarg_op(Chunk* self, Opcode op, size_t byte_count, size_t offset) {
@@ -97,12 +93,12 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
 }
 
 void chunk_disassemble(Chunk* self) {
-    for(size_t i = 0; i < self->values.length; i++) {
+    for(size_t i = 0; i < self->constants.length; i++) {
         printf("[");
-        value_print(self->values.data[i]);
+        value_print(self->constants.data[i]);
         printf("]");
     }
-    if(self->values.length == 0) printf("[]");
+    if(self->constants.length == 0) printf("[]");
     printf("\n");
     size_t offset = 0;
     while(offset < self->code.length) offset = chunk_disassemble_op(self, offset);

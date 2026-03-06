@@ -4,5 +4,6 @@
 
 #include "node.h"
 #include "chunk.h"
+#include "str_pool.h"
 
-Chunk compile(NodeArray* nodes, bool* had_error);
+void compile(NodeArray* nodes, Chunk* chunk, StrPool* str_pool, bool* had_error);

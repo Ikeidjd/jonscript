@@ -38,6 +38,10 @@ static char* read_file(const char* filepath) {
     Actually, I just checked and it was totally what I thought, 100%. When printing the read characters one by one (as integers, to check properly), there is no \r. I'm truly goated.
     */
     FILE* file = fopen(filepath, "rb");
+    if(file == NULL) {
+        fprintf(stderr, "Could not open file %s", filepath);
+        exit(0);
+    }
 
     fseek(file, 0, SEEK_END);
     size_t length = ftell(file);

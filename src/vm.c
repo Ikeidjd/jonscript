@@ -6,6 +6,7 @@
 #include "stack.h"
 
 typedef struct VM {
+    StrPool str_pool;
     Object* object;
     size_t sp;
     Value stack[STACK_SIZE];
@@ -43,14 +44,17 @@ static Value vm_top(VM* self) {
     return self->stack[self->sp - 1];
 }
 
-static ObjectStr* vm_object_str_malloc(VM* self, size_t length) {
-    ObjectStr* out = malloc(sizeof(ObjectStr));
-    *out = object_str_new(malloc(length), length);
+static ObjectStr* vm_object_str_register(VM* self, ObjectStr* str) {
+    ObjectStr* old_str = str;
+    str = str_pool_insert(&self->str_pool, str);
 
-    out->base.next = self->object;
-    self->object = (Object*) out;
+    // If string wasn't found
+    if(str == old_str) {
+        str->base.next = self->object;
+        self->object = (Object*) str;
+    }
 
-    return out;
+    return str;
 }
 
 static ObjectArray* vm_object_array_malloc(VM* self, size_t element_count) {
@@ -108,7 +112,7 @@ do { \
             case OP_LOAD_VALUE: {
                 size_t index = READ();
                 index |= (READ() << 8);
-                vm_push(self, chunk->values.data[index]);
+                vm_push(self, chunk->constants.data[index]);
                 break;
             }
             case OP_LOAD_TRUE: {
@@ -216,12 +220,16 @@ do { \
                 bool b_should_free;
                 char* b_str = value_to_string(b, &b_length, &b_should_free);
 
-                ObjectStr* result = vm_object_str_malloc(self, a_length + b_length);
-                for(size_t i = 0; i < a_length; i++) result->data[i] = a_str[i];
-                for(size_t i = 0; i < b_length; i++) result->data[i + a_length] = b_str[i];
+                char* data = malloc(a_length + b_length);
+                for(size_t i = 0; i < a_length; i++) data[i] = a_str[i];
+                for(size_t i = 0; i < b_length; i++) data[i + a_length] = b_str[i];
 
                 if(a_should_free) free(a_str);
                 if(b_should_free) free(b_str);
+
+                ObjectStr* result = malloc(sizeof(ObjectStr));
+                *result = object_str_new(data, a_length + b_length);
+                result = vm_object_str_register(self, result);
 
                 vm_push(self, value_new_object((Object*) result));
 
@@ -257,8 +265,9 @@ do { \
     }
 }
 
-void run(Chunk* chunk) {
+void run(Chunk* chunk, StrPool str_pool) {
     VM* self = (VM*) malloc(sizeof(VM));
+    self->str_pool = str_pool;
     self->object = NULL;
     self->sp = 0;
     vm_run(self, chunk);
