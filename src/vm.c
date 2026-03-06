@@ -148,6 +148,12 @@ do { \
             case OP_POP:
                 vm_pop(self);
                 break;
+            case OP_POP_N: {
+                size_t n = READ();
+                n |= (READ() << 8);
+                vm_pop_n(self, n);
+                break;
+            }
             case OP_ARRAYIFY_LIST: {
                 size_t length = READ();
                 length |= (READ() << 8);

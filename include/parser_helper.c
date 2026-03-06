@@ -6,6 +6,7 @@ typedef struct Parser {
     const TokenArray* tokens;
     size_t cur;
     NodeArray nodes;
+    size_t scope;
     bool had_error;
     bool panic_mode;
 } Parser;
@@ -15,6 +16,7 @@ static Parser parser_new(const TokenArray* tokens) {
         .tokens = tokens,
         .cur = 0,
         .nodes = node_array_new(),
+        .scope = 0,
         .had_error = false,
         .panic_mode = false
     };

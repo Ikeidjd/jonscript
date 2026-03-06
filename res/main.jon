@@ -1,5 +1,9 @@
-let age: int = 0;
+let a: int = 0;
+let a: int = 1;
 
-if age < 18 do print("CHILD");
-elif age == 18 do print("You're on thin ice, pal");
-else do print("THE ELDERLY");
+{
+    let a: str = a .. a;
+    let b: str[] = ["Jon", "Arbuckle", a];
+}
+
+let b: int = a + 2;

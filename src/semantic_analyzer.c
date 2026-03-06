@@ -14,13 +14,13 @@
 typedef struct LocalVar {
     Token name;
     Type* type;
-    size_t depth;
+    size_t scope;
 } LocalVar;
 
 typedef struct Semen {
     LocalVar* locals;
     size_t locals_top;
-    size_t locals_depth;
+    size_t locals_scope;
     bool had_error;
     bool panic_mode;
 } Semen;
@@ -35,7 +35,7 @@ static Semen semen_new() {
     return (Semen) {
         .locals = malloc(STACK_SIZE),
         .locals_top = 0,
-        .locals_depth = 0,
+        .locals_scope = 0,
         .had_error = false,
         .panic_mode = false
     };
@@ -98,7 +98,7 @@ static void semen_add_local(Semen* self, Type* type, Token name) {
     self->locals[self->locals_top++] = (LocalVar) {
         .name = name,
         .type = type,
-        .depth = self->locals_depth
+        .scope = self->locals_scope
     };
 }
 
@@ -119,10 +119,20 @@ static Type* semen_get_type_and_index_of_local(Semen* self, Token name, size_t* 
 static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index);
 
 static Type* anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
+    size_t old_scope = self->locals_scope;
+    self->locals_scope = node->scope;
+
     for(size_t i = 0; i < node->length; i++) {
         anal(self, nodes, node->data[i]);
         self->panic_mode = false;
     }
+
+    while(self->locals_top > 0 && self->locals[self->locals_top - 1].scope == node->scope) {
+        self->locals_top--;
+        node->pop_amount++;
+    }
+
+    self->locals_scope = old_scope;
     return NULL;
 }
 

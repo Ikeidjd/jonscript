@@ -6,6 +6,8 @@
 typedef size_t NodeIndex;
 
 typedef struct NodeProgram {
+    size_t scope;
+    size_t pop_amount;
     NodeIndex* data;
     size_t length;
     size_t capacity;

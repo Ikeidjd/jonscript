@@ -288,6 +288,16 @@ static NodeIndex parse_if_stat(Parser* self) {
     return node;
 }
 
+static NodeIndex parse_program(Parser* self, bool in_block);
+
+static NodeIndex parse_block_stat(Parser* self) {
+    parser_advance(self);
+    self->scope++;
+    NodeIndex out = parse_program(self, true);
+    parser_consume(self, TOKEN_BRACE_RIGHT, "'}'");
+    return out;
+}
+
 static NodeIndex parse_stat(Parser* self) {
     switch(parser_peek(self).type) {
         case TOKEN_IDENTIFIER:
@@ -297,6 +307,8 @@ static NodeIndex parse_stat(Parser* self) {
             return parse_print_stat(self);
         case TOKEN_KEYWORD_IF:
             return parse_if_stat(self);
+        case TOKEN_BRACE_LEFT:
+            return parse_block_stat(self);
         default:
             parser_advance(self);
             parser_error_string(self, "statement");
@@ -304,11 +316,15 @@ static NodeIndex parse_stat(Parser* self) {
     }
 }
 
-static NodeIndex parse_program(Parser* self) {
+static NodeIndex parse_program(Parser* self, bool in_block) {
     NodeIndex node = node_array_push(&self->nodes, NODE_PROGRAM);
-    GET(node).as.program = DYNAMIC_ARRAY_NEW(NodeProgram);
+    GET(node).as.program = (NodeProgram) {
+        .scope = self->scope,
+        .pop_amount = 0,
+        DYNAMIC_ARRAY_NEW_PARTIAL()
+    };
 
-    while(!parser_matches(self, TOKEN_EOF)) {
+    while(!parser_matches(self, TOKEN_EOF) && (!in_block || !parser_peek_matches(self, TOKEN_BRACE_RIGHT))) {
         NodeIndex decl_or_stat;
 
         switch(parser_peek(self).type) {
@@ -320,6 +336,7 @@ static NodeIndex parse_program(Parser* self) {
             case TOKEN_KEYWORD_PRINT:
             case TOKEN_KEYWORD_PRINTLN:
             case TOKEN_KEYWORD_IF:
+            case TOKEN_BRACE_LEFT:
                 decl_or_stat = parse_stat(self);
                 break;
             default:
@@ -338,7 +355,7 @@ static NodeIndex parse_program(Parser* self) {
 NodeArray parse(const TokenArray* tokens, bool* had_error) {
     Parser self = parser_new(tokens);
 
-    self.nodes.root = parse_program(&self);
+    self.nodes.root = parse_program(&self, false);
     *had_error = self.had_error;
 
     return self.nodes;

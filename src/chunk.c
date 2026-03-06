@@ -86,6 +86,7 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_LOAD_VALUE:
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
+        case OP_POP_N:
         case OP_ARRAYIFY_LIST:
         case OP_JUMP:
         case OP_JUMP_IF_TRUE:

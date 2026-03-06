@@ -33,6 +33,9 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_POP:
             fprintf(file, "OP_POP");
             break;
+        case OP_POP_N:
+            fprintf(file, "OP_POP_N");
+            break;
         case OP_ARRAYIFY_LIST:
             fprintf(file, "OP_ARRAYIFY_LIST");
             break;

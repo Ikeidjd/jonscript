@@ -7,6 +7,8 @@ static void comp(Chunk* self, NodeArray* nodes, NodeIndex node_index);
 
 static void comp_program(Chunk* self, NodeArray* nodes, NodeProgram* node) {
     for(size_t i = 0; i < node->length; i++) comp(self, nodes, node->data[i]);
+    if(node->pop_amount == 1) code_emit(&self->code, OP_POP);
+    else if(node->pop_amount > 1) code_emit_args(&self->code, OP_POP_N, 2, TO_LE_2_BYTES(node->pop_amount));
 }
 
 static void comp_var_decl(Chunk* self, NodeArray* nodes, NodeVarDecl* node) {

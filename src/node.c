@@ -29,7 +29,7 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
     switch(base_node->type) {
         case NODE_PROGRAM: {
             NodeProgram* node = &base_node->as.program;
-            fprintf(file, "NodeProgram:\n");
+            fprintf(file, "NodeProgram: %zu\n", node->scope);
             for(size_t i = 0; i < node->length; i++) node_fprintln(file, array, node->data[i], indentation + 4);
             break;
         }

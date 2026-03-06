@@ -157,7 +157,11 @@ static void lexer_add_int_token(Lexer* self) {
 static bool lexer_add_keyword_token(Lexer* self, size_t length, char* expected, TokenType type) {
     if(length == 0) {
         if(isalpha(lexer_peek(self))) return false;
-        else if(expected == NULL) self->cur--;
+        // Terrible hack
+        else if(expected == NULL) {
+            self->cur--;
+            self->pos--;
+        }
     }
 
     for(size_t i = 0; i < length; i++) {
@@ -239,6 +243,13 @@ static void lexer_add_identifier_token(Lexer* self) {
         if(lexer_add_keyword_token(self, 3, "rue", TOKEN_KEYWORD_TRUE)) return;
         break;
     }
+
+    // Terrible hack
+    if(!is_identifier_char(lexer_peek(self))) {
+        self->cur--;
+        self->pos--;
+    }
+
     while(is_identifier_char(lexer_peek(self))) lexer_advance(self);
     lexer_add_token(self, TOKEN_IDENTIFIER);
 }

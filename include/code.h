@@ -18,6 +18,7 @@ typedef enum Opcode {
     OP_INDEX_SET,
 
     OP_POP,
+    OP_POP_N,
 
     OP_ARRAYIFY_LIST,
     OP_ARRAYIFY_LENGTH,
