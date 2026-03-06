@@ -1,0 +1,9 @@
+let a: int = 0;
+let a: int = 1;
+
+{
+    let a: str = a .. a;
+    let b: str[] = ["Jon", "Arbuckle", a];
+}
+
+let b: int = a + 2;

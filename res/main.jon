@@ -1,9 +1,5 @@
-let a: int = 0;
-let a: int = 1;
+let a: int[] = [0:10];
+a[0] = 1;
 
-{
-    let a: str = a .. a;
-    let b: str[] = ["Jon", "Arbuckle", a];
-}
-
-let b: int = a + 2;
+mut b: int[] = [0:10];
+b[0] = 1;

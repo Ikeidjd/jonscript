@@ -7,13 +7,24 @@
 
 #define PROPAGATE_ERROR(statement) \
     statement; \
-    if(self->panic_mode) return NULL
+    if(self->panic_mode) return VOID
 
-#define ANAL(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index))
+#define ANAL(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index).type)
+#define ANAL_WITH_MUTABILITY(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index))
+
+#define TYPE_MUT_OF(type) (TypeMut) { type, false }
+#define TYPE_MUT_OF_MUTABILITY(type, is_mutable) (TypeMut) { type, is_mutable }
+
+#define VOID (TypeMut) {}
+
+typedef struct TypeMut {
+    Type* type;
+    bool is_mutable;
+} TypeMut;
 
 typedef struct LocalVar {
     Token name;
-    Type* type;
+    TypeMut type_mut;
     size_t scope;
 } LocalVar;
 
@@ -89,36 +100,41 @@ static void semen_non_bool_condition_error(Semen* self, Token pos, Type* type) {
     fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
+static void semen_mutability_error(Semen* self, Token pos) {
+    semen_signal_error(self);
+    fprintf(stderr, "Can't assign to immutable variable on line %d, pos %d.\n", pos.line, pos.pos);
+}
+
 static void semen_not_found_error(Semen* self, Token name) {
     semen_signal_error(self);
     fprintf(stderr, "Variable %.*s not found on line %d, pos %d.\n", name.text_len, name.text, name.line, name.pos);
 }
 
-static void semen_add_local(Semen* self, Type* type, Token name) {
+static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
     self->locals[self->locals_top++] = (LocalVar) {
         .name = name,
-        .type = type,
+        .type_mut = type_mut,
         .scope = self->locals_scope
     };
 }
 
-static Type* semen_get_type_and_index_of_local(Semen* self, Token name, size_t* out_index) {
+static TypeMut semen_get_type_mut_and_index_of_local(Semen* self, Token name, size_t* out_index) {
     // i can't be unsigned (and therefore can't be size_t) because it would mess with the i >= 0
     for(long long i = self->locals_top - 1; i >= 0; i--) {
         LocalVar* local = &self->locals[i];
         if(name.text_len == local->name.text_len && strncmp(name.text, local->name.text, name.text_len) == 0) {
             *out_index = (size_t) i;
-            return local->type;
+            return local->type_mut;
         }
     }
 
     semen_not_found_error(self, name);
-    return NULL;
+    return VOID;
 }
 
-static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index);
+static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index);
 
-static Type* anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
+static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
     size_t old_scope = self->locals_scope;
     self->locals_scope = node->scope;
 
@@ -133,34 +149,35 @@ static Type* anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
     }
 
     self->locals_scope = old_scope;
-    return NULL;
+    return VOID;
 }
 
-static Type* anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
+static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
     Type* value_type = ANAL(node->value);
 
-    semen_add_local(self, node->var_type, node->name);
+    semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
     if(node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
 
-    return NULL;
+    return VOID;
 }
 
-static Type* anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* node) {
-    Type* var_type = ANAL(node->lvalue);
+static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* node) {
+    TypeMut var = ANAL_WITH_MUTABILITY(node->lvalue);
     Type* value_type = ANAL(node->rvalue);
 
-    if(var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, var_type, value_type);
+    if(!var.is_mutable) semen_mutability_error(self, node->equals);
+    else if(var.type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, var.type, value_type);
 
-    return NULL;
+    return VOID;
 }
 
-static Type* anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
-    ANAL(node->expr);
-    return NULL;
+static TypeMut anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
+    ANAL_WITH_MUTABILITY(node->expr);
+    return VOID;
 }
 
-static Type* anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
-    Type* cond_type = anal(self, nodes, node->cond);
+static TypeMut anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
+    Type* cond_type = anal(self, nodes, node->cond).type;
     if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_non_bool_condition_error(self, node->if_token, cond_type);
 
     bool panic_mode = self->panic_mode;
@@ -170,13 +187,13 @@ static Type* anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
     panic_mode |= self->panic_mode;
     self->panic_mode = false;
 
-    ANAL(node->else_body);
+    ANAL_WITH_MUTABILITY(node->else_body);
 
     self->panic_mode = panic_mode;
-    return NULL;
+    return VOID;
 }
 
-static Type* anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
+static TypeMut anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
     Type* left = ANAL(node->left);
     Type* right = ANAL(node->right);
 
@@ -205,7 +222,7 @@ static Type* anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
             out = (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
             break;
         case TOKEN_DOTDOT:
-            return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR);
+            return TYPE_MUT_OF((Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR));
         default:
             fprintf(stderr, "Invalid binary operator ");
             token_fprint(stderr, node->op);
@@ -215,70 +232,70 @@ static Type* anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
 
     if(!is_correct_type_for_op || left != right) semen_error(self, SEMEN_OPERATION, node->op, left, right);
 
-    return out;
+    return TYPE_MUT_OF(out);
 }
 
-static Type* anal_logical_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
+static TypeMut anal_logical_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
     Type* left = ANAL(node->left);
     Type* right = ANAL(node->right);
 
     if(!is_primitive(left, TYPE_BOOL) || left != right) semen_error(self, SEMEN_OPERATION, node->op, left, right);
 
-    return left;
+    return TYPE_MUT_OF(left);
 }
 
-static Type* anal_index_op(Semen* self, NodeArray* nodes, NodeIndexOp* node) {
-    Type* left = ANAL(node->left);
+static TypeMut anal_index_op(Semen* self, NodeArray* nodes, NodeIndexOp* node) {
+    TypeMut left = ANAL_WITH_MUTABILITY(node->left);
     Type* right = ANAL(node->right);
 
-    if(!is_array(left) || !is_primitive(right, TYPE_INT)) semen_error(self, SEMEN_INDEX, node->bracket_left, left, right);
+    if(!is_array(left.type) || !is_primitive(right, TYPE_INT)) semen_error(self, SEMEN_INDEX, node->bracket_left, left.type, right);
 
-    return ((ArrayType*) left)->type;
+    return TYPE_MUT_OF_MUTABILITY(((ArrayType*) left.type)->type, left.is_mutable);
 }
 
-static Type* anal_var(Semen* self, NodeArray* nodes, NodeVar* node) {
-    return semen_get_type_and_index_of_local(self, node->name, &node->stack_index);
+static TypeMut anal_var(Semen* self, NodeArray* nodes, NodeVar* node) {
+    return semen_get_type_mut_and_index_of_local(self, node->name, &node->stack_index);
 }
 
-static Type* anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayListInit* node) {
+static TypeMut anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayListInit* node) {
     Type* type = ANAL(node->data[0]);
 
     for(int i = 1; i < node->length; i++) {
         Type* type2 = ANAL(node->data[i]);
         if(type != type2) {
             semen_error(self, SEMEN_MISMATCH, node->bracket_left, type, type2);
-            return NULL;
+            return VOID;
         }
     }
 
-    return (Type*) array_type_new(&nodes->type_hash_set, type);
+    return TYPE_MUT_OF((Type*) array_type_new(&nodes->type_hash_set, type));
 }
 
-static Type* anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLengthInit* node) {
+static TypeMut anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLengthInit* node) {
     Type* type = ANAL(node->expr);
     Type* length_type = ANAL(node->length);
 
     if(!is_primitive(length_type, TYPE_INT)) {
         semen_non_int_length_error(self, node->bracket_left, length_type);
-        return NULL;
+        return VOID;
     }
 
-    return (Type*) array_type_new(&nodes->type_hash_set, type);
+    return TYPE_MUT_OF((Type*) array_type_new(&nodes->type_hash_set, type));
 }
 
-static Type* anal_int(Semen* self, NodeArray* nodes, NodeLiteral* node) {
-    return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_INT);
+static TypeMut anal_int(Semen* self, NodeArray* nodes, NodeLiteral* node) {
+    return TYPE_MUT_OF((Type*) primitive_type_new(&nodes->type_hash_set, TYPE_INT));
 }
 
-static Type* anal_bool(Semen* self, NodeArray* nodes, NodeLiteral* node) {
-    return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
+static TypeMut anal_bool(Semen* self, NodeArray* nodes, NodeLiteral* node) {
+    return TYPE_MUT_OF((Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL));
 }
 
-static Type* anal_str(Semen* self, NodeArray* nodes, NodeLiteral* node) {
-    return (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR);
+static TypeMut anal_str(Semen* self, NodeArray* nodes, NodeLiteral* node) {
+    return TYPE_MUT_OF((Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR));
 }
 
-static Type* anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
+static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
     Node* node = &nodes->data[node_index];
     switch(node->type) {
         case NODE_PROGRAM: return anal_program(self, nodes, &node->as.program);
