@@ -21,6 +21,13 @@ typedef struct NodeVarDecl {
     bool is_mutable;
 } NodeVarDecl;
 
+typedef struct NodeFunDecl {
+    Token name;
+    FunctionType* type;
+    Token* param_names;
+    NodeIndex body;
+} NodeFunDecl;
+
 typedef struct NodeAssignStat {
     NodeIndex lvalue;
     Token equals;
@@ -86,6 +93,7 @@ typedef enum NodeType {
     NODE_PROGRAM,
 
     NODE_VAR_DECL,
+    NODE_FUN_DECL,
 
     NODE_ASSIGN_STAT,
     NODE_PRINT_STAT,
@@ -110,6 +118,7 @@ typedef struct Node {
         NodeProgram program;
 
         NodeVarDecl var_decl;
+        NodeFunDecl fun_decl;
 
         NodeAssignStat assign_stat;
         NodePrintStat print_stat;

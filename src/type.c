@@ -39,10 +39,35 @@ void type_hash_set_destruct(TypeHashSet self) {
     free(self.data);
 }
 
+static bool type_equals(Type* left, Type* right) {
+    if(left->type != right->type) return false;
+
+    switch(left->type) {
+        case TTYPE_PRIMITIVE:
+            return ((PrimitiveTypeObj*) left)->type == ((PrimitiveTypeObj*) right)->type;
+        case TTYPE_ARRAY:
+            return ((ArrayType*) left)->type == ((ArrayType*) right)->type;
+        case TTYPE_FUNCTION: {
+            FunctionType* a = (FunctionType*) left;
+            FunctionType* b = (FunctionType*) right;
+
+            if(a->param_count != b->param_count || a->return_type != b->return_type) return false;
+
+            for(size_t i = 0; i < a->param_count; i++) {
+                if(a->param_types[i] != b->param_types[i]) return false;
+            }
+
+            return true;
+        }
+        case TTYPE_VOID:
+            return true;
+    }
+}
+
 Type* type_hash_set_find(TypeHashSet* self, Type* type) {
     size_t index = (type->hash & (self->size - 1)); // Like type->hash % self->capacity but more optimized. Only works with powers of two, though
     for(size_t counter = 0; counter < self->size && self->data[index] != NULL; counter++) {
-        if(self->data[index]->hash == type->hash) return self->data[index];
+        if(type_equals(self->data[index], type)) return self->data[index];
         index = ((index + 1) & (self->size - 1));
     }
     return NULL;
@@ -94,7 +119,7 @@ PrimitiveTypeObj* primitive_type_new(TypeHashSet* set, PrimitiveType type) {
     *self = (PrimitiveTypeObj) {
         .base = {
             .type = TTYPE_PRIMITIVE,
-            .hash = type
+            .hash = type + 1 // .hash = 0 corresponds to void
         },
         .type = type
     };
@@ -114,6 +139,39 @@ ArrayType* array_type_new(TypeHashSet* set, Type* type) {
     };
 
     return (ArrayType*) type_hash_set_insert(set, (Type*) self, sizeof(ArrayType));
+}
+
+FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_COUNT], size_t param_count, Type* return_type) {
+    FunctionType* self = (FunctionType*) type_arena_alloc(set->arena, sizeof(FunctionType));
+
+    *self = (FunctionType) {
+        .base = {
+            .type = TTYPE_FUNCTION,
+            .hash = 0
+        },
+        .param_count = param_count,
+        .return_type = return_type
+    };
+
+    printf("HERE: %zu\n", self->param_count);
+
+    for(size_t i = 0; i < param_count; i++) {
+        self->param_types[i] = param_types[i];
+        self->base.hash ^= (uint64_t) param_types[i]; // Didn't bother to come up with anything better
+    }
+
+    return (FunctionType*) type_hash_set_insert(set, (Type*) self, sizeof(FunctionType));
+}
+
+Type* void_type_new(TypeHashSet* set) {
+    Type* self = type_arena_alloc(set->arena, sizeof(Type));
+
+    *self = (Type) {
+        .type = TTYPE_VOID,
+        .hash = 0
+    };
+
+    return type_hash_set_insert(set, self, sizeof(Type));
 }
 
 bool is_primitive(Type* self, PrimitiveType type) {

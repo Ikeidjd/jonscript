@@ -61,6 +61,7 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_EQUAL:
         case TOKEN_COMMA:
         case TOKEN_COLON:
+        case TOKEN_ARROW:
         case TOKEN_SEMICOLON:
         case TOKEN_PAREN_LEFT:
         case TOKEN_PAREN_RIGHT:
@@ -81,6 +82,7 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_KEYWORD_INT:
         case TOKEN_KEYWORD_BOOL:
         case TOKEN_KEYWORD_STR:
+        case TOKEN_KEYWORD_FUNCTION:
         case TOKEN_KEYWORD_TRUE:
         case TOKEN_KEYWORD_FALSE:
             return PREC_NONE;
@@ -230,6 +232,59 @@ static NodeIndex parse_var_decl(Parser* self) {
     return node;
 }
 
+static NodeIndex parse_block_stat(Parser* self);
+
+static NodeIndex parse_func_decl(Parser* self) {
+    parser_advance(self);
+
+    NodeIndex node = node_array_push(&self->nodes, NODE_FUN_DECL);
+
+    GET(node).as.fun_decl.name = PROPAGATE_ERROR(parser_consume(self, TOKEN_IDENTIFIER, "function name"));
+
+    PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_LEFT, "'('"));
+
+    size_t param_count = 0;
+    Type* param_types[MAX_PARAM_COUNT];
+    GET(node).as.fun_decl.param_names = malloc(MAX_PARAM_COUNT * sizeof(Token));
+
+    for(; parser_peek_matches(self, TOKEN_IDENTIFIER); param_count++) {
+        if(param_count == MAX_PARAM_COUNT) {
+            parser_error_too_many_params(self, GET(node).as.fun_decl.name);
+            return 0;
+        }
+
+        GET(node).as.fun_decl.param_names[param_count] = parser_advance(self);
+        PROPAGATE_ERROR(parser_consume(self, TOKEN_COLON, "':'"));
+        param_types[param_count] = PROPAGATE_ERROR(parse_type(self));
+
+        if(!parser_matches(self, TOKEN_COMMA)) {
+            param_count++;
+            break;
+        }
+    }
+
+    PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_RIGHT, "')'"));
+
+    Type* return_type;
+    if(parser_matches(self, TOKEN_ARROW)) {
+        return_type = PROPAGATE_ERROR(parse_type(self));
+    } else {
+        return_type = void_type_new(&self->nodes.type_hash_set);
+    }
+
+    GET(node).as.fun_decl.type = function_type_new(&self->nodes.type_hash_set, param_types, param_count, return_type);
+    function_type_print(GET(node).as.fun_decl.type);
+
+    if(parser_peek_matches(self, TOKEN_BRACE_LEFT)) {
+        GET(node).as.fun_decl.body = parse_block_stat(self);
+    } else {
+        parser_advance(self);
+        parser_error_string(self, "function body");
+    }
+
+    return node;
+}
+
 static NodeIndex parse_program(Parser* self, bool in_block);
 
 static NodeIndex parse_block_stat(Parser* self) {
@@ -350,6 +405,9 @@ static NodeIndex parse_program(Parser* self, bool in_block) {
             case TOKEN_KEYWORD_LET:
             case TOKEN_KEYWORD_MUT:
                 decl_or_stat = parse_var_decl(self);
+                break;
+            case TOKEN_KEYWORD_FUNCTION:
+                decl_or_stat = parse_func_decl(self);
                 break;
             case TOKEN_IDENTIFIER:
             case TOKEN_KEYWORD_PRINT:

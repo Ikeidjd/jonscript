@@ -4,11 +4,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "token.h"
+
+#define MAX_PARAM_COUNT 256
+
 typedef unsigned char byte;
 
 typedef enum TypeType {
     TTYPE_PRIMITIVE,
     TTYPE_ARRAY,
+    TTYPE_FUNCTION,
+    TTYPE_VOID,
     // TTYPE_DICT,
     // TTYPE_USER
 } TypeType;
@@ -49,6 +55,18 @@ void array_type_fprintln(FILE* file, ArrayType* self);
 void array_type_print(ArrayType* self);
 void array_type_println(ArrayType* self);
 
+typedef struct FunctionType {
+    Type base;
+    Type* param_types[MAX_PARAM_COUNT];
+    size_t param_count;
+    Type* return_type;
+} FunctionType;
+
+void function_type_fprint(FILE* file, FunctionType* self);
+void function_type_fprintln(FILE* file, FunctionType* self);
+void function_type_print(FunctionType* self);
+void function_type_println(FunctionType* self);
+
 // typedef struct DictType {
 //     Type base;
 //     Type* key;
@@ -75,6 +93,8 @@ void type_hash_set_destruct(TypeHashSet self);
 
 PrimitiveTypeObj* primitive_type_new(TypeHashSet* set, PrimitiveType type);
 ArrayType* array_type_new(TypeHashSet* set, Type* type);
+FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_COUNT], size_t param_count, Type* return_type);
+Type* void_type_new(TypeHashSet* set);
 
 bool is_primitive(Type* self, PrimitiveType type);
 bool is_array(Type* self);

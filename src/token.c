@@ -92,6 +92,9 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_COLON:
             fprintf(file, "TOKEN_COLON");
             break;
+        case TOKEN_ARROW:
+            fprintf(file, "TOKEN_ARROW");
+            break;
         case TOKEN_SEMICOLON:
             fprintf(file, "TOKEN_SEMICOLON");
             break;
@@ -151,6 +154,9 @@ void token_type_fprint(FILE* file, TokenType self) {
             break;
         case TOKEN_KEYWORD_STR:
             fprintf(file, "TOKEN_KEYWORD_STR");
+            break;
+        case TOKEN_KEYWORD_FUNCTION:
+            fprintf(file, "TOKEN_KEYWORD_FUNCTION");
             break;
         case TOKEN_KEYWORD_TRUE:
             fprintf(file, "TOKEN_KEYWORD_TRUE");

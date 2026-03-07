@@ -12,8 +12,19 @@ NodeArray node_array_new() {
 void node_array_destruct(NodeArray self) {
     type_hash_set_destruct(self.type_hash_set);
     for(size_t i = 0; i < self.length; i++) {
-        if(self.data[i].type == NODE_PROGRAM) free(self.data[i].as.program.data);
-        else if(self.data[i].type == NODE_ARRAY_LIST_INIT) free(self.data[i].as.array_list_init.data);
+        switch(self.data[i].type) {
+            case NODE_PROGRAM:
+                free(self.data[i].as.program.data);
+                break;
+            case NODE_ARRAY_LIST_INIT:
+                free(self.data[i].as.array_list_init.data);
+                break;
+            case NODE_FUN_DECL:
+                free(self.data[i].as.fun_decl.param_names);
+                break;
+            default:
+                break;
+        }
     }
     free(self.data);
 }
@@ -39,6 +50,19 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             type_fprint(file, node->var_type);
             fprintf(file, " %.*s\n", node->name.text_len, node->name.text);
             node_fprintln(file, array, node->value, indentation + 4);
+            break;
+        }
+        case NODE_FUN_DECL: {
+            NodeFunDecl* node = &base_node->as.fun_decl;
+            fprintf(file, "NodeFunDecl: (");
+            function_type_fprint(file, node->type);
+            fprintf(file, "), params(");
+            for(size_t i = 0; i < node->type->param_count; i++) {
+                fprintf(file, "%.*s", node->param_names[i].text_len, node->param_names[i].text);
+                if(i + 1 < node->type->param_count) fprintf(file, ", ");
+            }
+            fprintf(file, ")\n");
+            node_fprintln(file, array, node->body, indentation + 4);
             break;
         }
         case NODE_ASSIGN_STAT: {

@@ -184,7 +184,7 @@ static bool lexer_add_keyword_token(Lexer* self, size_t start, size_t length, ch
 static void lexer_add_identifier_token(Lexer* self) {
     switch(lexer_peek_from_start(self, 0)) {
     case 'b':
-        if(lexer_add_keyword_token(self, 1, 4, "ool", TOKEN_KEYWORD_BOOL)) return;
+        if(lexer_add_keyword_token(self, 1, 4, "ool", TOKEN_KEYWORD_BOOL)) return;      
         break;
     case 'd':
         if(lexer_add_keyword_token(self, 1, 2, "o", TOKEN_KEYWORD_DO)) return;
@@ -202,8 +202,14 @@ static void lexer_add_identifier_token(Lexer* self) {
             }
         }
     case 'f':
-        if(lexer_add_keyword_token(self, 1, 5, "alse", TOKEN_KEYWORD_FALSE)) return;
-        break;
+        switch(lexer_peek_from_start(self, 1)) {
+        case 'a':
+            if(lexer_add_keyword_token(self, 2, 5, "lse", TOKEN_KEYWORD_FALSE)) return;
+            break;
+        case 'u':
+            if(lexer_add_keyword_token(self, 2, 8, "nction", TOKEN_KEYWORD_FUNCTION)) return;
+            break;
+        }
     case 'i':
         switch(lexer_peek_from_start(self, 1)) {
         case 'f':
@@ -230,7 +236,7 @@ static void lexer_add_identifier_token(Lexer* self) {
                     case 't':
                         switch(lexer_peek_from_start(self, 5)) {
                         case 'l':
-                            if(lexer_add_keyword_token(self, 6, 7, "n", TOKEN_KEYWORD_PRINTLN)) return; // Haha, six seven
+                            if(lexer_add_keyword_token(self, 6, 7, "n", TOKEN_KEYWORD_PRINTLN)) return;
                             break;
                         default:
                             if(lexer_add_keyword_token(self, 5, 5, "", TOKEN_KEYWORD_PRINT)) return;
@@ -267,7 +273,7 @@ static void lexer_add_next_token(Lexer* self) {
             lexer_add_token(self, TOKEN_PLUS);
             break;
         case '-':
-            lexer_add_token(self, TOKEN_MINUS);
+            lexer_add_token(self, lexer_matches(self, '>') ? TOKEN_ARROW : TOKEN_MINUS);
             break;
         case '*':
             lexer_add_token(self, TOKEN_MULT);

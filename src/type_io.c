@@ -10,6 +10,12 @@ void type_fprint(FILE* file, Type* self) {
         case TTYPE_ARRAY:
             array_type_fprint(file, (ArrayType*) self);
             break;
+        case TTYPE_FUNCTION:
+            function_type_fprint(file, (FunctionType*) self);
+            break;
+        case TTYPE_VOID:
+            fprintf(file, "void");
+            break;
     }
 }
 
@@ -69,4 +75,28 @@ void array_type_print(ArrayType* self) {
 
 void array_type_println(ArrayType* self) {
     array_type_fprintln(stdout, self);
+}
+
+void function_type_fprint(FILE* file, FunctionType* self) {
+    fprintf(file, "(function(");
+    for(size_t i = 0; i < self->param_count; i++) {
+        type_fprint(file, self->param_types[i]);
+        if(i + 1 < self->param_count) fprintf(file, ", ");
+    }
+    fprintf(file, ") -> ");
+    type_fprint(file, self->return_type);
+    fprintf(file, ")");
+}
+
+void function_type_fprintln(FILE* file, FunctionType* self) {
+    function_type_fprint(file, self);
+    fprintf(file, "\n");
+}
+
+void function_type_print(FunctionType* self) {
+    function_type_fprint(stdout, self);
+}
+
+void function_type_println(FunctionType* self) {
+    function_type_fprintln(stdout, self);
 }

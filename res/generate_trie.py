@@ -12,7 +12,8 @@ keywords = [
     "elif",
     "else",
     "while",
-    "do"
+    "do",
+    "function"
 ]
 
 tab = "    "

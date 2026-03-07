@@ -1,0 +1,16 @@
+function add(a: int, b: int) -> int {
+}
+
+function mult_str(s: str, n: int) -> str {
+    mut out: str = "";
+    mut i: int = 0;
+
+    while i < n {
+        out = out .. s;
+        i = i + 1;
+    }
+}
+
+function println_cool(s: str) {
+    println("----" .. s .. "----");
+}

@@ -38,6 +38,7 @@ typedef enum TokenType {
     // Symbols
     TOKEN_COMMA,
     TOKEN_COLON,
+    TOKEN_ARROW,
     TOKEN_SEMICOLON,
     TOKEN_PAREN_LEFT,
     TOKEN_PAREN_RIGHT,
@@ -64,6 +65,7 @@ typedef enum TokenType {
     TOKEN_KEYWORD_INT,
     TOKEN_KEYWORD_BOOL,
     TOKEN_KEYWORD_STR,
+    TOKEN_KEYWORD_FUNCTION,
 
     TOKEN_KEYWORD_TRUE,
     TOKEN_KEYWORD_FALSE
