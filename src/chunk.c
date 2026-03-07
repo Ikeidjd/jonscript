@@ -1,5 +1,7 @@
 #include "chunk.h"
 
+#include <stdlib.h>
+
 Chunk chunk_new() {
     return (Chunk) {
         .constants = object_array_new(),
@@ -10,19 +12,28 @@ Chunk chunk_new() {
 void chunk_destruct(Chunk self) {
     code_destruct(self.code);
 
+#ifdef DEBUG_PRINT_FREED_OBJECTS
     printf("Freeing compile-time objects...\n");
+#endif
     for(size_t i = 0; i < self.constants.length; i++) {
         if(self.constants.data[i].type != VALUE_OBJECT) continue;
 
         Object* object = self.constants.data[i].as.object;
+    #ifdef DEBUG_PRINT_FREED_OBJECTS
         printf("Freeing object %p of type %d: ", object, object->type);
         object_println(object);
+    #endif
         Object* next = object->next;
         object_free(object);
         object = next;
     }
 
     object_array_destruct(&self.constants);
+}
+
+void chunk_free(Chunk* self) {
+    chunk_destruct(*self);
+    free(self);
 }
 
 void chunk_emit_load_value_op(Chunk* self, Value value) {
@@ -76,8 +87,11 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_CONCAT:
         case OP_PRINT:
         case OP_PRINTLN:
+        case OP_RETURN:
+        case OP_RETURN_VALUE:
             return chunk_display_simple_op(op, offset);
         case OP_LOAD_BYTE:
+        case OP_CALL:
             return chunk_display_monoarg_op(self, op, 1, offset);
         case OP_LOAD_VALUE:
         case OP_LOCAL_GET:
@@ -101,6 +115,16 @@ void chunk_disassemble(Chunk* self) {
     }
     if(self->constants.length == 0) printf("[]");
     printf("\n");
+
     size_t offset = 0;
     while(offset < self->code.length) offset = chunk_disassemble_op(self, offset);
+
+    for(size_t i = 0; i < self->constants.length; i++) {
+        if(self->constants.data[i].type == VALUE_OBJECT && self->constants.data[i].as.object->type == OBJECT_FUNCTION) {
+            printf("\n");
+            object_println(self->constants.data[i].as.object);
+            ObjectFunction* function = AS_FUNCTION(self->constants.data[i]);
+            chunk_disassemble(function->chunk);
+        }
+    }
 }

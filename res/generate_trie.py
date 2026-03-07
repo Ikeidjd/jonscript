@@ -13,7 +13,8 @@ keywords = [
     "else",
     "while",
     "do",
-    "function"
+    "function",
+    "return"
 ]
 
 tab = "    "

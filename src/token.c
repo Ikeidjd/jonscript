@@ -158,6 +158,9 @@ void token_type_fprint(FILE* file, TokenType self) {
         case TOKEN_KEYWORD_FUNCTION:
             fprintf(file, "TOKEN_KEYWORD_FUNCTION");
             break;
+        case TOKEN_KEYWORD_RETURN:
+            fprintf(file, "TOKEN_KEYWORD_RETURN");
+            break;
         case TOKEN_KEYWORD_TRUE:
             fprintf(file, "TOKEN_KEYWORD_TRUE");
             break;

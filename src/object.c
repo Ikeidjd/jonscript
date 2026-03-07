@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "dynamic_array.h"
+#include "chunk.h"
 
 Object object_new(ObjectType type) {
     return (Object) {
@@ -18,6 +19,9 @@ void object_free(Object* self) {
             break;
         case OBJECT_ARRAY:
             object_array_free((ObjectArray*) self);
+            break;
+        case OBJECT_FUNCTION:
+            object_function_free((ObjectFunction*) self);
             break;
     }
 }
@@ -40,6 +44,8 @@ bool object_equals(Object* left, Object* right) {
 
             return true;
         }
+        case OBJECT_FUNCTION:
+            return left == right;
     }
 }
 
@@ -91,6 +97,13 @@ char* object_to_string(Object* self, size_t* length, bool* should_free) {
             *should_free = true;
             return out;
         }
+        case OBJECT_FUNCTION: {
+            *length = sizeof("<fn 00000000>");
+            *should_free = true;
+            char* out = malloc(*length);
+            sprintf(out, "<fn %p>", self);
+            return out;
+        }
     }
 }
 
@@ -111,6 +124,9 @@ void object_fprint(FILE* file, Object* self) {
             fprintf(file, "]");
             break;
         }
+        case OBJECT_FUNCTION:
+            fprintf(file, "<fn %p>", self);
+            break;
     }
 }
 
@@ -125,6 +141,34 @@ void object_print(Object* self) {
 
 void object_println(Object* self) {
     object_fprintln(stdout, self);
+}
+
+// https://stackoverflow.com/questions/7666509/hash-function-for-string
+// http://www.cse.yorku.ca/~oz/hash.html
+static uint64_t djb2(unsigned char *str, size_t length) {
+    uint64_t hash = 5381;
+
+    for(size_t i = 0; i < length; i++) hash = ((hash << 5) + hash) + str[i]; /* hash * 33 + str[i] */
+
+    return hash;
+}
+
+ObjectStr object_str_new(char* data, size_t length) {
+    return (ObjectStr) {
+        .base = object_new(OBJECT_STR),
+        .hash = djb2((unsigned char*) data, length),
+        .data = data,
+        .length = length
+    };
+}
+
+void object_str_destruct(ObjectStr* const self) {
+    free(self->data);
+}
+
+void object_str_free(ObjectStr* self) {
+    object_str_destruct(self);
+    free(self);
 }
 
 ObjectArray object_array_new() {
@@ -156,30 +200,21 @@ void object_array_push(ObjectArray* self, Value value) {
     PUSH(self, value, 16);
 }
 
-// https://stackoverflow.com/questions/7666509/hash-function-for-string
-// http://www.cse.yorku.ca/~oz/hash.html
-static uint64_t djb2(unsigned char *str, size_t length) {
-    uint64_t hash = 5381;
+ObjectFunction object_function_new() {
+    Chunk* chunk = malloc(sizeof(Chunk));
+    *chunk = chunk_new();
 
-    for(size_t i = 0; i < length; i++) hash = ((hash << 5) + hash) + str[i]; /* hash * 33 + str[i] */
-
-    return hash;
-}
-
-ObjectStr object_str_new(char* data, size_t length) {
-    return (ObjectStr) {
-        .base = object_new(OBJECT_STR),
-        .hash = djb2((unsigned char*) data, length),
-        .data = data,
-        .length = length
+    return (ObjectFunction) {
+        .base = object_new(OBJECT_FUNCTION),
+        .chunk = chunk
     };
 }
 
-void object_str_destruct(ObjectStr* const self) {
-    free(self->data);
+void object_function_destruct(ObjectFunction* const self) {
+    chunk_free(self->chunk);
 }
 
-void object_str_free(ObjectStr* self) {
-    object_str_destruct(self);
+void object_function_free(ObjectFunction* self) {
+    object_function_destruct(self);
     free(self);
 }

@@ -15,15 +15,21 @@ typedef struct VM {
 static void vm_free(VM* self) {
     Object* object = self->object;
 
+#ifdef DEBUG_PRINT_FREED_OBJECTS
     printf("Freeing runtime objects...\n");
+#endif
     while(object != NULL) {
+    #ifdef DEBUG_PRINT_FREED_OBJECTS
         printf("Freeing object %p of type %d: ", object, object->type);
         object_println(object);
+    #endif
         Object* next = object->next;
         object_free(object);
         object = next;
     }
+#ifdef DEBUG_PRINT_FREED_OBJECTS
     printf("\n");
+#endif
 
     free(self);
 }
@@ -67,7 +73,7 @@ static ObjectArray* vm_object_array_malloc(VM* self, size_t element_count) {
     return out;
 }
 
-static void vm_run(VM* self, Chunk* chunk) {
+static void vm_run(VM* self, Chunk* chunk, size_t stack_frame_start_index) {
 #define NUMERICAL_BIN_OP(operator) \
 do { \
     int64_t b = vm_pop(self).as.integer; \
@@ -96,6 +102,7 @@ do { \
 
     size_t ip = 0;
     while(ip < chunk->code.length) {
+    #ifdef DEBUG_TRACE_EXECUTION
         for(size_t i = 0; i < self->sp; i++) {
             printf("[");
             value_print(self->stack[i]);
@@ -106,6 +113,7 @@ do { \
         printf("\n");
 
         chunk_disassemble_op(chunk, ip);
+    #endif
 
         Opcode op = READ();
         switch(op) {
@@ -129,13 +137,13 @@ do { \
             case OP_LOCAL_GET: {
                 size_t index = READ();
                 index |= (READ() << 8);
-                vm_push(self, self->stack[index]);
+                vm_push(self, self->stack[index + stack_frame_start_index]);
                 break;
             }
             case OP_LOCAL_SET: {
                 size_t index = READ();
                 index |= (READ() << 8);
-                self->stack[index] = vm_pop(self);
+                self->stack[index + stack_frame_start_index] = vm_pop(self);
                 break;
             }
             case OP_INDEX_GET: {
@@ -150,6 +158,12 @@ do { \
                 ObjectArray* array = AS_ARRAY(vm_pop(self));
                 Value value = vm_pop(self);
                 array->data[index] = value;
+                break;
+            }
+            case OP_CALL: {
+                size_t args_length = READ();
+                size_t new_stack_frame_start_index = self->sp - args_length - 1;
+                vm_run(self, AS_FUNCTION(self->stack[new_stack_frame_start_index])->chunk, new_stack_frame_start_index);
                 break;
             }
             case OP_POP:
@@ -268,6 +282,16 @@ do { \
                 size_t loop_length = READ();
                 loop_length |= READ() << 8;
                 ip -= loop_length + 3; // Each READ() increments ip by one, so adding 3 balances it out (the READ() that's missing here is the one that reads the opcode)
+                break;
+            }
+            case OP_RETURN:
+                self->sp = stack_frame_start_index;
+                return;
+            case OP_RETURN_VALUE: {
+                Value value = vm_top(self);
+                self->sp = stack_frame_start_index;
+                vm_push(self, value);
+                return;
             }
         }
     }
@@ -278,14 +302,7 @@ void run(Chunk* chunk, StrPool str_pool) {
     self->str_pool = str_pool;
     self->object = NULL;
     self->sp = 0;
-    vm_run(self, chunk);
-
-    for(size_t i = 0; i < self->sp; i++) {
-        printf("[");
-        value_print(self->stack[i]);
-        printf("]");
-    }
-    printf("\n\n");
+    vm_run(self, chunk, 0);
 
     vm_free(self);
 }

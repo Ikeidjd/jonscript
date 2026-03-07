@@ -37,3 +37,4 @@ void value_println(Value self);
 #define AS_OBJECT(value, type) ((type*) ((value).as.object))
 #define AS_STR(value) AS_OBJECT(value, ObjectStr)
 #define AS_ARRAY(value) AS_OBJECT(value, ObjectArray)
+#define AS_FUNCTION(value) AS_OBJECT(value, ObjectFunction)

@@ -83,6 +83,7 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_KEYWORD_BOOL:
         case TOKEN_KEYWORD_STR:
         case TOKEN_KEYWORD_FUNCTION:
+        case TOKEN_KEYWORD_RETURN:
         case TOKEN_KEYWORD_TRUE:
         case TOKEN_KEYWORD_FALSE:
             return PREC_NONE;
@@ -153,18 +154,46 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             return 0;
     }
 
-    while(parser_matches(self, TOKEN_BRACKET_LEFT)) {
+    while(true) {
         NodeIndex node_prev = node;
-        node = node_array_push(&self->nodes, NODE_INDEX_OP);
 
-        GET(node).as.index_op.bracket_left = parser_prev(self);
-        GET(node).as.index_op.left = node_prev;
-        GET(node).as.index_op.right = PROPAGATE_ERROR(parse_expr(self));
+        switch(parser_peek(self).type) {
+            case TOKEN_BRACKET_LEFT:
+                node = node_array_push(&self->nodes, NODE_INDEX_OP);
 
-        parser_consume(self, TOKEN_BRACKET_RIGHT, "']'");
+                GET(node).as.index_op.bracket_left = parser_advance(self);
+                GET(node).as.index_op.left = node_prev;
+                GET(node).as.index_op.right = PROPAGATE_ERROR(parse_expr(self));
+
+                parser_consume(self, TOKEN_BRACKET_RIGHT, "']'");
+                break;
+            case TOKEN_PAREN_LEFT:
+                node = node_array_push(&self->nodes, NODE_FUN_CALL);
+
+                GET(node).as.fun_call.paren_left = parser_advance(self);
+                GET(node).as.fun_call.func_expr = node_prev;
+                GET(node).as.fun_call.args = malloc(MAX_PARAM_LENGTH * sizeof(NodeIndex));
+                GET(node).as.fun_call.args_length = 0;
+
+                if(!parser_peek_matches(self, TOKEN_PAREN_RIGHT)) {
+                    GET(node).as.fun_call.args[GET(node).as.fun_call.args_length++] = PROPAGATE_ERROR(parse_expr(self));
+
+                    while(parser_matches(self, TOKEN_COMMA)) {
+                        if(GET(node).as.fun_call.args_length == MAX_PARAM_LENGTH) {
+                            parser_error_too_many_args(self, GET(node).as.fun_call.paren_left);
+                            return 0;
+                        }
+
+                        GET(node).as.fun_call.args[GET(node).as.fun_call.args_length++] = PROPAGATE_ERROR(parse_expr(self));
+                    }
+                }
+
+                parser_consume(self, TOKEN_PAREN_RIGHT, "')'");
+                break;
+            default:
+                return node;
+        }
     }
-
-    return node;
 }
 
 static NodeIndex parse_precedence(Parser* self, Precedence prev_prec) {
@@ -243,22 +272,22 @@ static NodeIndex parse_func_decl(Parser* self) {
 
     PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_LEFT, "'('"));
 
-    size_t param_length = 0;
+    size_t params_length = 0;
     Type* param_types[MAX_PARAM_LENGTH];
     GET(node).as.fun_decl.param_names = malloc(MAX_PARAM_LENGTH * sizeof(Token));
 
-    for(; parser_peek_matches(self, TOKEN_IDENTIFIER); param_length++) {
-        if(param_length == MAX_PARAM_LENGTH) {
+    for(; parser_peek_matches(self, TOKEN_IDENTIFIER); params_length++) {
+        if(params_length == MAX_PARAM_LENGTH) {
             parser_error_too_many_params(self, GET(node).as.fun_decl.name);
             return 0;
         }
 
-        GET(node).as.fun_decl.param_names[param_length] = parser_advance(self);
+        GET(node).as.fun_decl.param_names[params_length] = parser_advance(self);
         PROPAGATE_ERROR(parser_consume(self, TOKEN_COLON, "':'"));
-        param_types[param_length] = PROPAGATE_ERROR(parse_type(self));
+        param_types[params_length] = PROPAGATE_ERROR(parse_type(self));
 
         if(!parser_matches(self, TOKEN_COMMA)) {
-            param_length++;
+            params_length++;
             break;
         }
     }
@@ -272,7 +301,7 @@ static NodeIndex parse_func_decl(Parser* self) {
         return_type = void_type_new(&self->nodes.type_hash_set);
     }
 
-    GET(node).as.fun_decl.type = function_type_new(&self->nodes.type_hash_set, param_types, param_length, return_type);
+    GET(node).as.fun_decl.type = function_type_new(&self->nodes.type_hash_set, param_types, params_length, return_type);
 
     if(parser_peek_matches(self, TOKEN_BRACE_LEFT)) {
         GET(node).as.fun_decl.body = parse_block_stat(self);
@@ -288,40 +317,33 @@ static NodeIndex parse_program(Parser* self, bool in_block);
 
 static NodeIndex parse_block_stat(Parser* self) {
     parser_advance(self);
-    self->scope++;
     NodeIndex out = parse_program(self, true);
     parser_consume(self, TOKEN_BRACE_RIGHT, "'}'");
     return out;
 }
 
-static NodeIndex parse_assign_stat(Parser* self) {
-    NodeIndex node = node_array_push(&self->nodes, NODE_ASSIGN_STAT);
+static NodeIndex parse_assign_stat_or_fun_call_stat(Parser* self) {
+    NodeIndex node = PROPAGATE_ERROR(parse_expr(self));
 
-    NodeIndex lvalue = PROPAGATE_ERROR(parse_expr(self));
-    switch(GET(lvalue).type) {
-        case NODE_VAR:
-            GET(lvalue).as.var.should_set = true;
-            break;
-        case NODE_INDEX_OP:
-            GET(lvalue).as.index_op.should_set = true;
-            break;
-        default:
-            parser_error_string(self, "lvalue");
-            return 0;
+    if(parser_peek_matches(self, TOKEN_EQUAL)) {
+        NodeIndex old_node = node;
+        node = node_array_push(&self->nodes, NODE_ASSIGN_STAT);
+
+        GET(node).as.assign_stat.lvalue = old_node;
+        GET(node).as.assign_stat.equals = parser_advance(self);
+        GET(node).as.assign_stat.rvalue = PROPAGATE_ERROR(parse_expr(self));
     }
 
-    GET(node).as.assign_stat.lvalue = lvalue;
-    GET(node).as.assign_stat.equals = PROPAGATE_ERROR(parser_consume(self, TOKEN_EQUAL, "="));
-    GET(node).as.assign_stat.rvalue = PROPAGATE_ERROR(parse_expr(self));
+    PROPAGATE_ERROR(parser_consume(self, TOKEN_SEMICOLON, "';'"));
 
-    parser_consume(self, TOKEN_SEMICOLON, "';'");
+    if(GET(node).type != NODE_ASSIGN_STAT && GET(node).type != NODE_FUN_CALL) parser_error_expr_stat(self);
     return node;
 }
 
 static NodeIndex parse_print_stat(Parser* self) {
     NodeIndex node = node_array_push(&self->nodes, NODE_PRINT_STAT);
 
-    GET(node).as.print_stat.add_line = parser_advance(self).type == TOKEN_KEYWORD_PRINTLN;
+    GET(node).as.print_stat.print_token = parser_advance(self);
     GET(node).as.print_stat.expr = PROPAGATE_ERROR(parse_expr(self));
 
     parser_consume(self, TOKEN_SEMICOLON, "';'");
@@ -369,10 +391,28 @@ static NodeIndex parse_while_stat(Parser* self) {
     return node;
 }
 
+static NodeIndex parse_return_stat(Parser* self) {
+    NodeIndex node = node_array_push(&self->nodes, NODE_RETURN_STAT);
+
+    GET(node).as.return_stat.return_token = parser_advance(self);
+
+    if(!parser_peek_matches(self, TOKEN_SEMICOLON)) {
+        GET(node).as.return_stat.expr = PROPAGATE_ERROR(parse_expr(self));
+        GET(node).as.return_stat.has_expr = true;
+    } else {
+        GET(node).as.return_stat.has_expr = false;
+    }
+
+    parser_consume(self, TOKEN_SEMICOLON, "';'");
+    return node;
+}
+
 static NodeIndex parse_stat(Parser* self) {
     switch(parser_peek(self).type) {
+        case TOKEN_BRACE_LEFT:
+            return parse_block_stat(self);
         case TOKEN_IDENTIFIER:
-            return parse_assign_stat(self);
+            return parse_assign_stat_or_fun_call_stat(self);
         case TOKEN_KEYWORD_PRINT:
         case TOKEN_KEYWORD_PRINTLN:
             return parse_print_stat(self);
@@ -380,8 +420,8 @@ static NodeIndex parse_stat(Parser* self) {
             return parse_if_stat(self);
         case TOKEN_KEYWORD_WHILE:
             return parse_while_stat(self);
-        case TOKEN_BRACE_LEFT:
-            return parse_block_stat(self);
+        case TOKEN_KEYWORD_RETURN:
+            return parse_return_stat(self);
         default:
             parser_advance(self);
             parser_error_string(self, "statement");
@@ -392,7 +432,6 @@ static NodeIndex parse_stat(Parser* self) {
 static NodeIndex parse_program(Parser* self, bool in_block) {
     NodeIndex node = node_array_push(&self->nodes, NODE_PROGRAM);
     GET(node).as.program = (NodeProgram) {
-        .scope = self->scope,
         .pop_amount = 0,
         .create_scope = in_block,
         DYNAMIC_ARRAY_NEW_PARTIAL()
@@ -409,12 +448,13 @@ static NodeIndex parse_program(Parser* self, bool in_block) {
             case TOKEN_KEYWORD_FUNCTION:
                 decl_or_stat = parse_func_decl(self);
                 break;
+            case TOKEN_BRACE_LEFT:
             case TOKEN_IDENTIFIER:
             case TOKEN_KEYWORD_PRINT:
             case TOKEN_KEYWORD_PRINTLN:
             case TOKEN_KEYWORD_IF:
             case TOKEN_KEYWORD_WHILE:
-            case TOKEN_BRACE_LEFT:
+            case TOKEN_KEYWORD_RETURN:
                 decl_or_stat = parse_stat(self);
                 break;
             default:

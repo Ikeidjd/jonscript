@@ -26,6 +26,13 @@ static void comp_var_decl(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeVa
     COMP(node->value);
 }
 
+static void comp_fun_decl(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeFunDecl* node) {
+    ObjectFunction* function = malloc(sizeof(ObjectFunction));
+    *function = object_function_new();
+    chunk_emit_load_value_op(chunk, value_new_object((Object*) function));
+    comp(self, function->chunk, nodes, node->body);
+}
+
 static void comp_assign_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeAssignStat* node) {
     COMP(node->rvalue);
     COMP(node->lvalue);
@@ -33,7 +40,7 @@ static void comp_assign_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, Nod
 
 static void comp_print_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, NodePrintStat* node) {
     COMP(node->expr);
-    code_emit(&chunk->code, node->add_line ? OP_PRINTLN : OP_PRINT);
+    code_emit(&chunk->code, node->print_token.type == TOKEN_KEYWORD_PRINT ? OP_PRINT : OP_PRINTLN);
 }
 
 static void comp_if_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIfStat* node) {
@@ -58,6 +65,11 @@ static void comp_while_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, Node
     COMP(node->body);
     code_emit_loop(&chunk->code, loop_start);
     code_patch_jump(&chunk->code, cond_jump);
+}
+
+static void comp_return_stat(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeReturnStat* node) {
+    if(node->has_expr) COMP(node->expr);
+    code_emit(&chunk->code, node->has_expr ? OP_RETURN_VALUE : OP_RETURN);
 }
 
 static void comp_bin_op(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeBinOp* node) {
@@ -129,6 +141,12 @@ static void comp_index_op(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIn
     code_emit(&chunk->code, node->should_set ? OP_INDEX_SET : OP_INDEX_GET);
 }
 
+static void comp_fun_call(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeFunCall* node) {
+    COMP(node->func_expr);
+    for(size_t i = 0; i < node->args_length; i++) COMP(node->args[i]);
+    code_emit_args(&chunk->code, OP_CALL, 1, (byte[]) { (byte) node->args_length });
+}
+
 static void comp_var(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeVar* node) {
     code_emit_args(&chunk->code, node->should_set ? OP_LOCAL_SET : OP_LOCAL_GET, 2, TO_LE_2_BYTES(node->stack_index));
 }
@@ -175,6 +193,9 @@ static void comp(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndex node_
         case NODE_VAR_DECL:
             comp_var_decl(self, chunk, nodes, &node->as.var_decl);
             break;
+        case NODE_FUN_DECL:
+            comp_fun_decl(self, chunk, nodes, &node->as.fun_decl);
+            break;
         case NODE_ASSIGN_STAT:
             comp_assign_stat(self, chunk, nodes, &node->as.assign_stat);
             break;
@@ -187,6 +208,9 @@ static void comp(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndex node_
         case NODE_WHILE_STAT:
             comp_while_stat(self, chunk, nodes, &node->as.while_stat);
             break;
+        case NODE_RETURN_STAT:
+            comp_return_stat(self, chunk, nodes, &node->as.return_stat);
+            break;
         case NODE_BIN_OP:
             comp_bin_op(self, chunk, nodes, &node->as.bin_op);
             break;
@@ -195,6 +219,9 @@ static void comp(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndex node_
             break;
         case NODE_INDEX_OP:
             comp_index_op(self, chunk, nodes, &node->as.index_op);
+            break;
+        case NODE_FUN_CALL:
+            comp_fun_call(self, chunk, nodes, &node->as.fun_call);
             break;
         case NODE_VAR:
             comp_var(self, chunk, nodes, &node->as.var);

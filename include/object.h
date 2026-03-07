@@ -6,7 +6,8 @@
 
 typedef enum ObjectType {
     OBJECT_STR,
-    OBJECT_ARRAY
+    OBJECT_ARRAY,
+    OBJECT_FUNCTION
 } ObjectType;
 
 struct Object {
@@ -26,6 +27,18 @@ void object_fprintln(FILE* file, Object* self);
 void object_print(Object* self);
 void object_println(Object* self);
 
+typedef struct ObjectStr {
+    Object base;
+    uint64_t hash;
+    char* data;
+    size_t length;
+} ObjectStr;
+
+ObjectStr object_str_new(char* data, size_t length);
+
+void object_str_destruct(ObjectStr* const self);
+void object_str_free(ObjectStr* self);
+
 typedef struct ObjectArray {
     Object base;
     Value* data;
@@ -41,14 +54,14 @@ void object_array_free(ObjectArray* self);
 
 void object_array_push(ObjectArray* self, Value value);
 
-typedef struct ObjectStr {
+typedef struct Chunk Chunk;
+
+typedef struct ObjectFunction {
     Object base;
-    uint64_t hash;
-    char* data;
-    size_t length;
-} ObjectStr;
+    Chunk* chunk;
+} ObjectFunction;
 
-ObjectStr object_str_new(char* data, size_t length);
+ObjectFunction object_function_new();
 
-void object_str_destruct(ObjectStr* const self);
-void object_str_free(ObjectStr* self);
+void object_function_destruct(ObjectFunction* const self);
+void object_function_free(ObjectFunction* self);

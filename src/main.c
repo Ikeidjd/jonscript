@@ -12,20 +12,29 @@ int main() {
     Chunk chunk = chunk_new();
     StrPool str_pool = str_pool_new();
 
-    TokenArray tokens = lex("res/main.jon", &had_error);
+    TokenArray tokens = lex("res/fibonacci/fourthbonacci.jon", &had_error);
     if(had_error) goto End1;
-    // for(size_t i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
-    // printf("\n");
+
+#ifdef DEBUG_PRINT_TOKENS
+    for(size_t i = 0; i < tokens.length; i++) token_println(tokens.data[i]);
+    printf("\n");
+#endif
 
     nodes = parse(&tokens, &had_error);
     if(had_error) goto End1;
+
+#ifdef DEBUG_PRINT_NODES_ONE
     node_array_println(&nodes);
     printf("\n");
+#endif
 
     analyze(&nodes, &had_error);
     if(had_error) goto End1;
+
+#ifdef DEBUG_PRINT_NODES_TWO
     node_array_println(&nodes);
     printf("\n");
+#endif
 
     compile(&nodes, &chunk, &str_pool, &had_error);
 End1:
@@ -33,6 +42,7 @@ End1:
     node_array_destruct(nodes);
     if(had_error) goto End2;
 
+#ifdef DEBUG_PRINT_STRING_LITERALS
     printf("String literals: ");
     for(size_t i = 0; i < str_pool.size; i++) {
         if(str_pool.data[i] != NULL) {
@@ -42,9 +52,12 @@ End1:
         }
     }
     printf("\n\n");
+#endif
 
+#ifdef DEBUG_DISASSEMBLE_CHUNK
     chunk_disassemble(&chunk);
     printf("\n");
+#endif
 
     run(&chunk, str_pool);
 

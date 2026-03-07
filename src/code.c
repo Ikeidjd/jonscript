@@ -30,6 +30,9 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_INDEX_SET:
             fprintf(file, "OP_INDEX_SET");
             break;
+        case OP_CALL:
+            fprintf(file, "OP_CALL");
+            break;
         case OP_POP:
             fprintf(file, "OP_POP");
             break;
@@ -101,6 +104,12 @@ void opcode_fprint(FILE* file, Opcode self) {
             break;
         case OP_LOOP:
             fprintf(file, "OP_LOOP");
+            break;
+        case OP_RETURN:
+            fprintf(file, "OP_RETURN");
+            break;
+        case OP_RETURN_VALUE:
+            fprintf(file, "OP_RETURN_VALUE");
             break;
     }
 }

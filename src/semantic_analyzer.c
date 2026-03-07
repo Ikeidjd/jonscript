@@ -32,6 +32,8 @@ typedef struct Semen {
     LocalVar* locals;
     size_t locals_top;
     size_t locals_scope;
+    Type* cur_function_type;
+    size_t stack_frame_start_index;
     bool had_error;
     bool panic_mode;
 } Semen;
@@ -47,6 +49,8 @@ static Semen semen_new() {
         .locals = malloc(STACK_SIZE),
         .locals_top = 0,
         .locals_scope = 0,
+        .cur_function_type = NULL,
+        .stack_frame_start_index = 0,
         .had_error = false,
         .panic_mode = false
     };
@@ -82,7 +86,7 @@ static void semen_error(Semen* self, SemenError error, Token op, Type* left, Typ
     fprintf(stderr, " on line %d, pos %d.\n", op.line, op.pos);
 }
 
-static void semen_non_int_length_error(Semen* self, Token pos, Type* type) {
+static void semen_error_non_int_length(Semen* self, Token pos, Type* type) {
     semen_signal_error(self);
     fprintf(stderr, "Length should be ");
     primitive_type_fprint(stderr, TYPE_INT);
@@ -91,7 +95,7 @@ static void semen_non_int_length_error(Semen* self, Token pos, Type* type) {
     fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
-static void semen_non_bool_condition_error(Semen* self, Token pos, Type* type) {
+static void semen_error_non_bool_condition(Semen* self, Token pos, Type* type) {
     semen_signal_error(self);
     fprintf(stderr, "Condition should be ");
     primitive_type_fprint(stderr, TYPE_BOOL);
@@ -100,19 +104,56 @@ static void semen_non_bool_condition_error(Semen* self, Token pos, Type* type) {
     fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
-static void semen_mutability_error(Semen* self, Token pos) {
+static void semen_error_not_an_lvalue(Semen* self, Token pos) {
+    semen_signal_error(self);
+    fprintf(stderr, "Can't assign to rvalue on line %d, pos %d.\n", pos.line, pos.pos);
+}
+
+static void semen_error_mutability(Semen* self, Token pos) {
     semen_signal_error(self);
     fprintf(stderr, "Can't assign to immutable variable on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
-static void semen_not_found_error(Semen* self, Token name) {
+static void semen_error_not_found(Semen* self, Token name) {
     semen_signal_error(self);
     fprintf(stderr, "Variable %.*s not found on line %d, pos %d.\n", name.text_len, name.text, name.line, name.pos);
 }
 
-static void semen_repeated_parameter_names_error(Semen* self, Token left, Token right) {
+static void semen_error_repeated_parameter_names(Semen* self, Token left, Token right) {
     semen_signal_error(self);
     fprintf(stderr, "Repeated parameter name %.*s on line %d, pos %d and line %d, pos %d.\n", left.text_len, left.text, left.line, left.pos, right.line, right.pos);
+}
+
+static void semen_error_return_out_of_function(Semen* self, Token return_token) {
+    semen_signal_error(self);
+    fprintf(stderr, "'return' should not appear outside of a function on line %d, pos %d.\n", return_token.line, return_token.pos);
+}
+
+static void semen_error_wrong_return(Semen* self, Token return_token, Type* expected, Type* got) {
+    semen_signal_error(self);
+    fprintf(stderr, "Should have returned ");
+    type_fprint(stderr, expected);
+    fprintf(stderr, ", but returned ");
+    type_fprint(stderr, got);
+    fprintf(stderr, " on line %d, pos %d.\n", return_token.line, return_token.pos);
+}
+
+static void semen_error_tried_to_call_non_function(Semen* self, Token paren_left, Type* non_function) {
+    semen_signal_error(self);
+    fprintf(stderr, "Tried to call non-function ");
+    type_fprint(stderr, non_function);
+    fprintf(stderr, " on line %d, pos %d.\n", paren_left.line, paren_left.pos);
+}
+
+static void semen_error_wrong_args_length(Semen* self, Token paren_left, size_t params_length, size_t args_length) {
+    semen_signal_error(self);
+    fprintf(stderr, "Expected %zu %s for function call, but got %zu on line %d, pos %d.\n",
+        params_length, params_length == 1 ? "argument" : "arguments", args_length, paren_left.line, paren_left.pos);
+}
+
+static void semen_error_void(Semen* self, Token pos) {
+    semen_signal_error(self);
+    fprintf(stderr, "Can't treat void as a value on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
 static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
@@ -125,15 +166,15 @@ static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
 
 static TypeMut semen_get_type_mut_and_index_of_local(Semen* self, Token name, size_t* out_index) {
     // i can't be unsigned (and therefore can't be size_t) because it would mess with the i >= 0
-    for(long long i = self->locals_top - 1; i >= 0; i--) {
+    for(long long i = self->locals_top - 1; i >= self->stack_frame_start_index; i--) {
         LocalVar* local = &self->locals[i];
         if(name.text_len == local->name.text_len && strncmp(name.text, local->name.text, name.text_len) == 0) {
-            *out_index = (size_t) i;
+            *out_index = ((size_t) i) - self->stack_frame_start_index;
             return local->type_mut;
         }
     }
 
-    semen_not_found_error(self, name);
+    semen_error_not_found(self, name);
     return FAKE_NULL;
 }
 
@@ -147,7 +188,7 @@ static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
         self->panic_mode = false;
     }
 
-    while(self->locals_top > 0 && self->locals[self->locals_top - 1].scope == node->scope) {
+    while(self->locals_top > 0 && self->locals[self->locals_top - 1].scope == self->locals_scope) {
         self->locals_top--;
         node->pop_amount++;
     }
@@ -166,16 +207,23 @@ static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
 }
 
 static TypeMut anal_fun_decl(Semen* self, NodeArray* nodes, NodeFunDecl* node) {
+    semen_add_local(self, TYPE_MUT_OF((Type*) node->type), node->name);
+
     self->locals_scope++;
 
-    for(size_t i = 0; i < node->type->param_length; i++) {
+    size_t old_stack_frame_start_index = self->stack_frame_start_index;
+    self->stack_frame_start_index = self->locals_top;
+
+    semen_add_local(self, TYPE_MUT_OF((Type*) node->type), node->name);
+
+    for(size_t i = 0; i < node->type->params_length; i++) {
         Token left = node->param_names[i];
 
-        for(size_t j = i + 1; j < node->type->param_length; j++) {
+        for(size_t j = i + 1; j < node->type->params_length; j++) {
             Token right = node->param_names[j];
 
             if(left.text_len == right.text_len && strncmp(left.text, right.text, left.text_len) == 0) {
-                semen_repeated_parameter_names_error(self, left, right);
+                semen_error_repeated_parameter_names(self, left, right);
                 break;
             }
         }
@@ -188,30 +236,50 @@ static TypeMut anal_fun_decl(Semen* self, NodeArray* nodes, NodeFunDecl* node) {
     bool panic_mode = self->panic_mode;
     self->panic_mode = false;
 
+    Type* old_function_type = self->cur_function_type;
+    self->cur_function_type = node->type->return_type;
+
     ANAL(node->body);
+
+    self->cur_function_type = old_function_type;
+    self->stack_frame_start_index = old_stack_frame_start_index;
 
     self->panic_mode = panic_mode;
     return FAKE_NULL;
 }
 
 static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* node) {
+    Node* lvalue = &nodes->data[node->lvalue];
+    switch(lvalue->type) {
+        case NODE_VAR:
+            lvalue->as.var.should_set = true;
+            break;
+        case NODE_INDEX_OP:
+            lvalue->as.index_op.should_set = true;
+            break;
+        default:
+            semen_error_not_an_lvalue(self, node->equals);
+            break;
+    }
+
     TypeMut var = ANAL(node->lvalue);
     Type* value_type = ANAL_GET_TYPE(node->rvalue);
 
-    if(!var.is_mutable) semen_mutability_error(self, node->equals);
+    if(!var.is_mutable) semen_error_mutability(self, node->equals);
     else if(var.type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, var.type, value_type);
 
     return FAKE_NULL;
 }
 
 static TypeMut anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
-    ANAL(node->expr);
+    Type* type = ANAL_GET_TYPE(node->expr);
+    if(is_void(type)) semen_error_void(self, node->print_token);
     return FAKE_NULL;
 }
 
 static TypeMut anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
     Type* cond_type = anal(self, nodes, node->cond).type;
-    if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_non_bool_condition_error(self, node->if_token, cond_type);
+    if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_error_non_bool_condition(self, node->if_token, cond_type);
 
     bool panic_mode = self->panic_mode;
     self->panic_mode = false;
@@ -232,7 +300,7 @@ static TypeMut anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
 
 static TypeMut anal_while_stat(Semen* self, NodeArray* nodes, NodeWhileStat* node) {
     Type* cond_type = anal(self, nodes, node->cond).type;
-    if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_non_bool_condition_error(self, node->while_token, cond_type);
+    if(!self->panic_mode && !is_primitive(cond_type, TYPE_BOOL)) semen_error_non_bool_condition(self, node->while_token, cond_type);
 
     bool panic_mode = self->panic_mode;
     self->panic_mode = false;
@@ -240,6 +308,25 @@ static TypeMut anal_while_stat(Semen* self, NodeArray* nodes, NodeWhileStat* nod
     ANAL(node->body);
 
     self->panic_mode = panic_mode;
+    return FAKE_NULL;
+}
+
+static TypeMut anal_return_stat(Semen* self, NodeArray* nodes, NodeReturnStat* node) {
+    Type* type;
+    if(node->has_expr) {
+        type = ANAL_GET_TYPE(node->expr);
+        if(is_void(type)) {
+            semen_error_void(self, node->return_token);
+            return FAKE_NULL;
+        }
+    }
+    else {
+        type = void_type_new(&nodes->type_hash_set);
+    }
+
+    if(self->cur_function_type == NULL) semen_error_return_out_of_function(self, node->return_token);
+    else if(self->cur_function_type != type) semen_error_wrong_return(self, node->return_token, self->cur_function_type, type);
+
     return FAKE_NULL;
 }
 
@@ -268,10 +355,12 @@ static TypeMut anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
             out = (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
             break;
         case TOKEN_EQEQ:
-            is_correct_type_for_op = true;
+            is_correct_type_for_op = !is_void(left);
             out = (Type*) primitive_type_new(&nodes->type_hash_set, TYPE_BOOL);
             break;
         case TOKEN_DOTDOT:
+            is_correct_type_for_op = !is_void(left) && !is_void(right);
+            if(!is_correct_type_for_op) break;
             return TYPE_MUT_OF((Type*) primitive_type_new(&nodes->type_hash_set, TYPE_STR));
         default:
             fprintf(stderr, "Invalid binary operator ");
@@ -303,6 +392,37 @@ static TypeMut anal_index_op(Semen* self, NodeArray* nodes, NodeIndexOp* node) {
     return TYPE_MUT_OF_MUTABILITY(((ArrayType*) left.type)->type, left.is_mutable);
 }
 
+static TypeMut anal_fun_call(Semen* self, NodeArray* nodes, NodeFunCall* node) {
+    Type* func_type_base = ANAL_GET_TYPE(node->func_expr);
+
+    if(!is_function(func_type_base)) {
+        semen_error_tried_to_call_non_function(self, node->paren_left, func_type_base);
+        return FAKE_NULL;
+    }
+
+    FunctionType* func_type = (FunctionType*) func_type_base;
+
+    if(func_type->params_length != node->args_length) {
+        semen_error_wrong_args_length(self, node->paren_left, func_type->params_length, node->args_length);
+        return FAKE_NULL;
+    }
+
+    bool panic_mode = self->panic_mode;
+    self->panic_mode = false;
+
+    for(size_t i = 0; i < func_type->params_length; i++) {
+        Type* param_type = func_type->param_types[i];
+        Type* arg_type = ANAL_GET_TYPE(node->args[i]);
+        if(param_type != arg_type) semen_error(self, SEMEN_MISMATCH, node->paren_left, param_type, arg_type);
+
+        panic_mode |= self->panic_mode;
+        self->panic_mode = false;
+    }
+
+    self->panic_mode = panic_mode;
+    return TYPE_MUT_OF(func_type->return_type);
+}
+
 static TypeMut anal_var(Semen* self, NodeArray* nodes, NodeVar* node) {
     return semen_get_type_mut_and_index_of_local(self, node->name, &node->stack_index);
 }
@@ -326,7 +446,7 @@ static TypeMut anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLe
     Type* length_type = ANAL_GET_TYPE(node->length);
 
     if(!is_primitive(length_type, TYPE_INT)) {
-        semen_non_int_length_error(self, node->bracket_left, length_type);
+        semen_error_non_int_length(self, node->bracket_left, length_type);
         return FAKE_NULL;
     }
 
@@ -353,11 +473,13 @@ static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
         case NODE_PRINT_STAT: return anal_print_stat(self, nodes, &node->as.print_stat);
         case NODE_IF_STAT: return anal_if_stat(self, nodes, &node->as.if_stat);
         case NODE_WHILE_STAT: return anal_while_stat(self, nodes, &node->as.while_stat);
+        case NODE_RETURN_STAT: return anal_return_stat(self, nodes, &node->as.return_stat);
         case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
         case NODE_FUN_DECL: return anal_fun_decl(self, nodes, &node->as.fun_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);
         case NODE_INDEX_OP: return anal_index_op(self, nodes, &node->as.index_op);
+        case NODE_FUN_CALL: return anal_fun_call(self, nodes, &node->as.fun_call);
         case NODE_VAR: return anal_var(self, nodes, &node->as.var);
         case NODE_ARRAY_LIST_INIT: return anal_array_list_init(self, nodes, &node->as.array_list_init);
         case NODE_ARRAY_LENGTH_INIT: return anal_array_length_init(self, nodes, &node->as.array_length_init);

@@ -18,6 +18,6 @@ function println_cool(s: str) {
     println("----" .. s .. "----");
 }
 
-println(mult_str("*", 10));
 println(add(10, 20));
+println(mult_str("*", 10));
 println_cool("The Low Taper Fade is still MASSIVE");

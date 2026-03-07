@@ -6,7 +6,7 @@
 
 #include "token.h"
 
-#define MAX_PARAM_LENGTH 256
+#define MAX_PARAM_LENGTH 255
 
 typedef unsigned char byte;
 
@@ -58,7 +58,7 @@ void array_type_println(ArrayType* self);
 typedef struct FunctionType {
     Type base;
     Type* param_types[MAX_PARAM_LENGTH];
-    size_t param_length;
+    size_t params_length;
     Type* return_type;
 } FunctionType;
 
@@ -96,5 +96,7 @@ ArrayType* array_type_new(TypeHashSet* set, Type* type);
 FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LENGTH], size_t param_length, Type* return_type);
 Type* void_type_new(TypeHashSet* set);
 
+bool is_void(Type* self);
 bool is_primitive(Type* self, PrimitiveType type);
 bool is_array(Type* self);
+bool is_function(Type* self);

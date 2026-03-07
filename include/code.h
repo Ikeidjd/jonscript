@@ -17,6 +17,8 @@ typedef enum Opcode {
     OP_INDEX_GET,
     OP_INDEX_SET,
 
+    OP_CALL,
+
     OP_POP,
     OP_POP_N,
 
@@ -48,7 +50,10 @@ typedef enum Opcode {
     OP_JUMP_IF_FALSE,
     OP_JUMP_IF_FALSE_POP,
 
-    OP_LOOP
+    OP_LOOP,
+
+    OP_RETURN,
+    OP_RETURN_VALUE
 } Opcode;
 
 void opcode_fprint(FILE* file, Opcode self);

@@ -22,6 +22,9 @@ void node_array_destruct(NodeArray self) {
             case NODE_FUN_DECL:
                 free(self.data[i].as.fun_decl.param_names);
                 break;
+            case NODE_FUN_CALL:
+                free(self.data[i].as.fun_call.args);
+                break;
             default:
                 break;
         }
@@ -34,13 +37,13 @@ size_t node_array_push(NodeArray* self, NodeType type) {
     return self->length - 1;
 }
 
-void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentation) {
+void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t indentation) {
     for(size_t i = 0; i < indentation; i++) fprintf(file, " ");
-    Node* base_node = &array->data[index];
+    Node* base_node = &array->data[node_index];
     switch(base_node->type) {
         case NODE_PROGRAM: {
             NodeProgram* node = &base_node->as.program;
-            fprintf(file, "NodeProgram: %zu\n", node->scope);
+            fprintf(file, "NodeProgram: %s\n", node->create_scope ? "creates scope" : "doesn't create scope");
             for(size_t i = 0; i < node->length; i++) node_fprintln(file, array, node->data[i], indentation + 4);
             break;
         }
@@ -54,12 +57,12 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
         }
         case NODE_FUN_DECL: {
             NodeFunDecl* node = &base_node->as.fun_decl;
-            fprintf(file, "NodeFunDecl: ");
+            fprintf(file, "NodeFunDecl: %.*s, ", node->name.text_len, node->name.text);
             function_type_fprint(file, node->type);
             fprintf(file, ", params(");
-            for(size_t i = 0; i < node->type->param_length; i++) {
+            for(size_t i = 0; i < node->type->params_length; i++) {
                 fprintf(file, "%.*s", node->param_names[i].text_len, node->param_names[i].text);
-                if(i + 1 < node->type->param_length) fprintf(file, ", ");
+                if(i + 1 < node->type->params_length) fprintf(file, ", ");
             }
             fprintf(file, ")\n");
             node_fprintln(file, array, node->body, indentation + 4);
@@ -74,7 +77,8 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
         }
         case NODE_PRINT_STAT: {
             NodePrintStat* node = &base_node->as.print_stat;
-            fprintf(file, "NodePrintStat: %s\n", node->add_line ? "println" : "print");
+            fprintf(file, "NodePrintStat: ");
+            token_fprintln(file, node->print_token);
             node_fprintln(file, array, node->expr, indentation + 4);
             break;
         }
@@ -91,6 +95,12 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             fprintf(file, "NodeWhileStat:\n");
             node_fprintln(file, array, node->cond, indentation + 4);
             node_fprintln(file, array, node->body, indentation + 4);
+            break;
+        }
+        case NODE_RETURN_STAT: {
+            NodeReturnStat* node = &base_node->as.return_stat;
+            fprintf(file, "NodeReturnStat:\n");
+            if(node->has_expr) node_fprintln(file, array, node->expr, indentation + 4);
             break;
         }
         case NODE_BIN_OP: {
@@ -114,6 +124,13 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
             fprintf(file, "NodeIndexOp: %s\n", node->should_set ? "SET" : "GET");
             node_fprintln(file, array, node->left, indentation + 4);
             node_fprintln(file, array, node->right, indentation + 4);
+            break;
+        }
+        case NODE_FUN_CALL: {
+            NodeFunCall* node = &base_node->as.fun_call;
+            fprintf(file, "NodeFunCall:\n");
+            node_fprintln(file, array, node->func_expr, indentation + 4);
+            for(size_t i = 0; i < node->args_length; i++) node_fprintln(file, array, node->args[i], indentation + 4);
             break;
         }
         case NODE_VAR: {
@@ -157,8 +174,8 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
     }
 }
 
-void node_println(NodeArray* array, size_t index) {
-    node_fprintln(stdout, array, index, 0);
+void node_println(NodeArray* array, NodeIndex node_index) {
+    node_fprintln(stdout, array, node_index, 0);
 }
 
 void node_array_fprintln(FILE* file, NodeArray* self) {

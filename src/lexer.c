@@ -176,7 +176,8 @@ static bool lexer_add_keyword_token(Lexer* self, size_t start, size_t length, ch
 
     if(is_identifier_char(lexer_peek_from_start(self, length))) return false;
 
-    self->cur = self->start_cur + length;
+    while(self->cur < self->start_cur + length) lexer_advance(self);
+
     lexer_add_token(self, type);
     return true;
 }
@@ -246,6 +247,9 @@ static void lexer_add_identifier_token(Lexer* self) {
                 }
             }
         }
+    case 'r':
+        if(lexer_add_keyword_token(self, 1, 6, "eturn", TOKEN_KEYWORD_RETURN)) return;
+        break;
     case 's':
         if(lexer_add_keyword_token(self, 1, 3, "tr", TOKEN_KEYWORD_STR)) return;
         break;

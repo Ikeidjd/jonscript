@@ -1,5 +1,6 @@
-let n: int = 10;
-mut fib: int[] = [0:n];
-fib[0] = 0;
-fib[1] = 1;
-for(int i = 2; i < 10; i++) fib[i] = fib[i - 1] + fib[i - 2];
+function fib(n: int) -> int {
+    if(n <= 1) do return n;
+    return fib(n - 1) + fib(n - 2);
+}
+
+print(fib(10));

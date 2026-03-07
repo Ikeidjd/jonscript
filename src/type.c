@@ -51,9 +51,9 @@ static bool type_equals(Type* left, Type* right) {
             FunctionType* a = (FunctionType*) left;
             FunctionType* b = (FunctionType*) right;
 
-            if(a->param_length != b->param_length || a->return_type != b->return_type) return false;
+            if(a->params_length != b->params_length || a->return_type != b->return_type) return false;
 
-            for(size_t i = 0; i < a->param_length; i++) {
+            for(size_t i = 0; i < a->params_length; i++) {
                 if(a->param_types[i] != b->param_types[i]) return false;
             }
 
@@ -110,7 +110,7 @@ ArrayType* array_type_new(TypeHashSet* set, Type* type) {
     return (ArrayType*) type_hash_set_insert(set, (Type*) self, sizeof(ArrayType));
 }
 
-FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LENGTH], size_t param_length, Type* return_type) {
+FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LENGTH], size_t params_length, Type* return_type) {
     FunctionType* self = (FunctionType*) type_arena_alloc(set->arena, sizeof(FunctionType));
 
     *self = (FunctionType) {
@@ -118,11 +118,11 @@ FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LE
             .type = TTYPE_FUNCTION,
             .hash = 0
         },
-        .param_length = param_length,
+        .params_length = params_length,
         .return_type = return_type
     };
 
-    for(size_t i = 0; i < param_length; i++) {
+    for(size_t i = 0; i < params_length; i++) {
         self->param_types[i] = param_types[i];
         self->base.hash ^= (uint64_t) param_types[i]; // Didn't bother to come up with anything better
     }
@@ -141,10 +141,18 @@ Type* void_type_new(TypeHashSet* set) {
     return type_hash_set_insert(set, self, sizeof(Type));
 }
 
+bool is_void(Type* self) {
+    return self->type == TTYPE_VOID;
+}
+
 bool is_primitive(Type* self, PrimitiveType type) {
     return self->type == TTYPE_PRIMITIVE && ((PrimitiveTypeObj*) self)->type == type;
 }
 
 bool is_array(Type* self) {
     return self->type == TTYPE_ARRAY;
+}
+
+bool is_function(Type* self) {
+    return self->type == TTYPE_FUNCTION;
 }

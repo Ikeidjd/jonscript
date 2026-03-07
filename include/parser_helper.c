@@ -6,7 +6,6 @@ typedef struct Parser {
     const TokenArray* tokens;
     size_t cur;
     NodeArray nodes;
-    size_t scope;
     bool had_error;
     bool panic_mode;
 } Parser;
@@ -16,7 +15,6 @@ static Parser parser_new(const TokenArray* tokens) {
         .tokens = tokens,
         .cur = 0,
         .nodes = node_array_new(),
-        .scope = 0,
         .had_error = false,
         .panic_mode = false
     };
@@ -68,6 +66,19 @@ static void parser_error_too_many_params(Parser* self, Token function_name) {
 
     fprintf(stderr, "Too many parameters for function %.*s on line %d, pos %d. Maximum is %d\n",
         function_name.text_len, function_name.text, function_name.line, function_name.pos, MAX_PARAM_LENGTH);
+}
+
+static void parser_error_too_many_args(Parser* self, Token paren_left) {
+    parser_signal_error(self);
+
+    fprintf(stderr, "Too many arguments for function call on line %d, pos %d. Maximum is %d\n", paren_left.line, paren_left.pos, MAX_PARAM_LENGTH);
+}
+
+static void parser_error_expr_stat(Parser* self) {
+    parser_signal_error(self);
+
+    Token pos = parser_prev(self);
+    fprintf(stderr, "Expression used as a statement on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
 static void parser_error_token_type(Parser* self, TokenType expected) {

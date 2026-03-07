@@ -11,7 +11,9 @@ typedef struct Chunk {
 } Chunk;
 
 Chunk chunk_new();
+
 void chunk_destruct(Chunk self);
+void chunk_free(Chunk* self);
 
 void chunk_emit_load_value_op(Chunk* self, Value value);
 void chunk_emit_load_str_op(Chunk* self, Token token);

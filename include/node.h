@@ -6,7 +6,6 @@
 typedef size_t NodeIndex;
 
 typedef struct NodeProgram {
-    size_t scope;
     size_t pop_amount;
     NodeIndex* data;
     size_t length;
@@ -36,8 +35,8 @@ typedef struct NodeAssignStat {
 } NodeAssignStat;
 
 typedef struct NodePrintStat {
+    Token print_token;
     NodeIndex expr;
-    bool add_line;
 } NodePrintStat;
 
 typedef struct NodeIfStat {
@@ -54,6 +53,12 @@ typedef struct NodeWhileStat {
     NodeIndex body;
 } NodeWhileStat;
 
+typedef struct NodeReturnStat {
+    Token return_token;
+    NodeIndex expr;
+    bool has_expr;
+} NodeReturnStat;
+
 typedef struct NodeBinOp {
     Token op;
     NodeIndex left;
@@ -66,6 +71,13 @@ typedef struct NodeIndexOp {
     NodeIndex right;
     bool should_set;
 } NodeIndexOp;
+
+typedef struct NodeFunCall {
+    Token paren_left;
+    NodeIndex func_expr;
+    NodeIndex* args;
+    size_t args_length;
+} NodeFunCall;
 
 typedef struct NodeVar {
     Token name;
@@ -100,10 +112,12 @@ typedef enum NodeType {
     NODE_PRINT_STAT,
     NODE_IF_STAT,
     NODE_WHILE_STAT,
+    NODE_RETURN_STAT,
 
     NODE_BIN_OP,
     NODE_LOGICAL_OP,
     NODE_INDEX_OP,
+    NODE_FUN_CALL,
 
     NODE_VAR,
     NODE_ARRAY_LIST_INIT,
@@ -125,9 +139,11 @@ typedef struct Node {
         NodePrintStat print_stat;
         NodeIfStat if_stat;
         NodeWhileStat while_stat;
+        NodeReturnStat return_stat;
 
         NodeBinOp bin_op;
         NodeIndexOp index_op;
+        NodeFunCall fun_call;
 
         NodeVar var;
         NodeArrayListInit array_list_init;
@@ -148,8 +164,8 @@ NodeArray node_array_new();
 void node_array_destruct(NodeArray self);
 size_t node_array_push(NodeArray* self, NodeType type);
 
-void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentation);
-void node_println(NodeArray* array, size_t index);
+void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t indentation);
+void node_println(NodeArray* array, NodeIndex node_index);
 
 void node_array_fprintln(FILE* file, NodeArray* self);
 void node_array_println(NodeArray* self);
