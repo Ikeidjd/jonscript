@@ -1,6 +1,6 @@
 #include "type.h"
 
-#include "dynamic_array.h"
+#include "hash_set.h"
 
 #define TYPE_ARENA_SIZE 0x10000
 
@@ -51,9 +51,9 @@ static bool type_equals(Type* left, Type* right) {
             FunctionType* a = (FunctionType*) left;
             FunctionType* b = (FunctionType*) right;
 
-            if(a->param_count != b->param_count || a->return_type != b->return_type) return false;
+            if(a->param_length != b->param_length || a->return_type != b->return_type) return false;
 
-            for(size_t i = 0; i < a->param_count; i++) {
+            for(size_t i = 0; i < a->param_length; i++) {
                 if(a->param_types[i] != b->param_types[i]) return false;
             }
 
@@ -64,40 +64,9 @@ static bool type_equals(Type* left, Type* right) {
     }
 }
 
-Type* type_hash_set_find(TypeHashSet* self, Type* type) {
-    size_t index = (type->hash & (self->size - 1)); // Like type->hash % self->capacity but more optimized. Only works with powers of two, though
-    for(size_t counter = 0; counter < self->size && self->data[index] != NULL; counter++) {
-        if(type_equals(self->data[index], type)) return self->data[index];
-        index = ((index + 1) & (self->size - 1));
-    }
-    return NULL;
-}
-
-// A self-insert without resizing, huh... what would be a self-insert with resizing, an inflation fantasy? Really makes you think. The no_check_duplicates could be selfcest
-static void type_hash_set_insert_no_resize_and_no_check_duplicates(TypeHashSet* self, Type* type) {
-    size_t index = (type->hash & (self->size - 1)); // Like type->hash % self->capacity but more optimized. Only works with powers of two, though
-    for(size_t counter = 0; counter < self->size && self->data[index] != NULL; counter++) index = ((index + 1) & (self->size - 1));
-    self->data[index] = type;
-    self->occupied++;
-}
-
-static void type_hash_set_resize(TypeHashSet* self) {
-    size_t old_size = self->size;
-    Type** old_data = self->data;
-
-    if(self->size == 0) self->size = 64;
-    else self->size *= 2;
-
-    self->data = malloc(self->size * sizeof(Type*));
-
-    for(size_t i = 0; i < self->size; i++) self->data[i] = NULL;
-
-    for(size_t i = 0; i < old_size; i++) {
-        if(old_data[i] != NULL) type_hash_set_insert_no_resize_and_no_check_duplicates(self, old_data[i]);
-    }
-
-    free(old_data);
-}
+HASH_SET_FIND_FUNCTION(TypeHashSet, Type*, type_equals, type_hash_set)
+HASH_SET_INSERT_NO_RESIZE_AND_NO_CHECK_DUPLICATES_FUNCTION(TypeHashSet, Type*, type_hash_set)
+HASH_SET_RESIZE_FUNCTION(TypeHashSet, Type*, type_hash_set)
 
 // Haha, self-insert reference
 static Type* type_hash_set_insert(TypeHashSet* self, Type* type, size_t size_in_bytes_to_deallocate_in_case_of_duplicate) {
@@ -141,7 +110,7 @@ ArrayType* array_type_new(TypeHashSet* set, Type* type) {
     return (ArrayType*) type_hash_set_insert(set, (Type*) self, sizeof(ArrayType));
 }
 
-FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_COUNT], size_t param_count, Type* return_type) {
+FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LENGTH], size_t param_length, Type* return_type) {
     FunctionType* self = (FunctionType*) type_arena_alloc(set->arena, sizeof(FunctionType));
 
     *self = (FunctionType) {
@@ -149,13 +118,11 @@ FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_CO
             .type = TTYPE_FUNCTION,
             .hash = 0
         },
-        .param_count = param_count,
+        .param_length = param_length,
         .return_type = return_type
     };
 
-    printf("HERE: %zu\n", self->param_count);
-
-    for(size_t i = 0; i < param_count; i++) {
+    for(size_t i = 0; i < param_length; i++) {
         self->param_types[i] = param_types[i];
         self->base.hash ^= (uint64_t) param_types[i]; // Didn't bother to come up with anything better
     }
@@ -175,7 +142,7 @@ Type* void_type_new(TypeHashSet* set) {
 }
 
 bool is_primitive(Type* self, PrimitiveType type) {
-    return self->hash == type;
+    return self->type == TTYPE_PRIMITIVE && ((PrimitiveTypeObj*) self)->type == type;
 }
 
 bool is_array(Type* self) {

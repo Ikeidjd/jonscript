@@ -243,22 +243,22 @@ static NodeIndex parse_func_decl(Parser* self) {
 
     PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_LEFT, "'('"));
 
-    size_t param_count = 0;
-    Type* param_types[MAX_PARAM_COUNT];
-    GET(node).as.fun_decl.param_names = malloc(MAX_PARAM_COUNT * sizeof(Token));
+    size_t param_length = 0;
+    Type* param_types[MAX_PARAM_LENGTH];
+    GET(node).as.fun_decl.param_names = malloc(MAX_PARAM_LENGTH * sizeof(Token));
 
-    for(; parser_peek_matches(self, TOKEN_IDENTIFIER); param_count++) {
-        if(param_count == MAX_PARAM_COUNT) {
+    for(; parser_peek_matches(self, TOKEN_IDENTIFIER); param_length++) {
+        if(param_length == MAX_PARAM_LENGTH) {
             parser_error_too_many_params(self, GET(node).as.fun_decl.name);
             return 0;
         }
 
-        GET(node).as.fun_decl.param_names[param_count] = parser_advance(self);
+        GET(node).as.fun_decl.param_names[param_length] = parser_advance(self);
         PROPAGATE_ERROR(parser_consume(self, TOKEN_COLON, "':'"));
-        param_types[param_count] = PROPAGATE_ERROR(parse_type(self));
+        param_types[param_length] = PROPAGATE_ERROR(parse_type(self));
 
         if(!parser_matches(self, TOKEN_COMMA)) {
-            param_count++;
+            param_length++;
             break;
         }
     }
@@ -272,8 +272,7 @@ static NodeIndex parse_func_decl(Parser* self) {
         return_type = void_type_new(&self->nodes.type_hash_set);
     }
 
-    GET(node).as.fun_decl.type = function_type_new(&self->nodes.type_hash_set, param_types, param_count, return_type);
-    function_type_print(GET(node).as.fun_decl.type);
+    GET(node).as.fun_decl.type = function_type_new(&self->nodes.type_hash_set, param_types, param_length, return_type);
 
     if(parser_peek_matches(self, TOKEN_BRACE_LEFT)) {
         GET(node).as.fun_decl.body = parse_block_stat(self);
@@ -395,6 +394,7 @@ static NodeIndex parse_program(Parser* self, bool in_block) {
     GET(node).as.program = (NodeProgram) {
         .scope = self->scope,
         .pop_amount = 0,
+        .create_scope = in_block,
         DYNAMIC_ARRAY_NEW_PARTIAL()
     };
 

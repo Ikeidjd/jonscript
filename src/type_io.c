@@ -79,9 +79,9 @@ void array_type_println(ArrayType* self) {
 
 void function_type_fprint(FILE* file, FunctionType* self) {
     fprintf(file, "(function(");
-    for(size_t i = 0; i < self->param_count; i++) {
+    for(size_t i = 0; i < self->param_length; i++) {
         type_fprint(file, self->param_types[i]);
-        if(i + 1 < self->param_count) fprintf(file, ", ");
+        if(i + 1 < self->param_length) fprintf(file, ", ");
     }
     fprintf(file, ") -> ");
     type_fprint(file, self->return_type);

@@ -7,7 +7,7 @@
 
 #define PROPAGATE_ERROR(statement) \
     statement; \
-    if(self->panic_mode) return VOID
+    if(self->panic_mode) return FAKE_NULL
 
 #define ANAL_GET_TYPE(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index).type)
 #define ANAL(node_index) PROPAGATE_ERROR(anal(self, nodes, node_index))
@@ -15,7 +15,7 @@
 #define TYPE_MUT_OF(type) (TypeMut) { type, false }
 #define TYPE_MUT_OF_MUTABILITY(type, is_mutable) (TypeMut) { type, is_mutable }
 
-#define VOID (TypeMut) {}
+#define FAKE_NULL (TypeMut) {}
 
 typedef struct TypeMut {
     Type* type;
@@ -110,6 +110,11 @@ static void semen_not_found_error(Semen* self, Token name) {
     fprintf(stderr, "Variable %.*s not found on line %d, pos %d.\n", name.text_len, name.text, name.line, name.pos);
 }
 
+static void semen_repeated_parameter_names_error(Semen* self, Token left, Token right) {
+    semen_signal_error(self);
+    fprintf(stderr, "Repeated parameter name %.*s on line %d, pos %d and line %d, pos %d.\n", left.text_len, left.text, left.line, left.pos, right.line, right.pos);
+}
+
 static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
     self->locals[self->locals_top++] = (LocalVar) {
         .name = name,
@@ -129,14 +134,13 @@ static TypeMut semen_get_type_mut_and_index_of_local(Semen* self, Token name, si
     }
 
     semen_not_found_error(self, name);
-    return VOID;
+    return FAKE_NULL;
 }
 
 static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index);
 
 static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
-    size_t old_scope = self->locals_scope;
-    self->locals_scope = node->scope;
+    if(node->create_scope) self->locals_scope++;
 
     for(size_t i = 0; i < node->length; i++) {
         anal(self, nodes, node->data[i]);
@@ -148,8 +152,8 @@ static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
         node->pop_amount++;
     }
 
-    self->locals_scope = old_scope;
-    return VOID;
+    if(node->create_scope) self->locals_scope--;
+    return FAKE_NULL;
 }
 
 static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
@@ -158,7 +162,36 @@ static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
     semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
     if(node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
 
-    return VOID;
+    return FAKE_NULL;
+}
+
+static TypeMut anal_fun_decl(Semen* self, NodeArray* nodes, NodeFunDecl* node) {
+    self->locals_scope++;
+
+    for(size_t i = 0; i < node->type->param_length; i++) {
+        Token left = node->param_names[i];
+
+        for(size_t j = i + 1; j < node->type->param_length; j++) {
+            Token right = node->param_names[j];
+
+            if(left.text_len == right.text_len && strncmp(left.text, right.text, left.text_len) == 0) {
+                semen_repeated_parameter_names_error(self, left, right);
+                break;
+            }
+        }
+
+        semen_add_local(self, TYPE_MUT_OF(node->type->param_types[i]), left);
+    }
+
+    self->locals_scope--;
+
+    bool panic_mode = self->panic_mode;
+    self->panic_mode = false;
+
+    ANAL(node->body);
+
+    self->panic_mode = panic_mode;
+    return FAKE_NULL;
 }
 
 static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* node) {
@@ -168,12 +201,12 @@ static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* n
     if(!var.is_mutable) semen_mutability_error(self, node->equals);
     else if(var.type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, var.type, value_type);
 
-    return VOID;
+    return FAKE_NULL;
 }
 
 static TypeMut anal_print_stat(Semen* self, NodeArray* nodes, NodePrintStat* node) {
     ANAL(node->expr);
-    return VOID;
+    return FAKE_NULL;
 }
 
 static TypeMut anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
@@ -194,7 +227,7 @@ static TypeMut anal_if_stat(Semen* self, NodeArray* nodes, NodeIfStat* node) {
         self->panic_mode = panic_mode;
     }
 
-    return VOID;
+    return FAKE_NULL;
 }
 
 static TypeMut anal_while_stat(Semen* self, NodeArray* nodes, NodeWhileStat* node) {
@@ -207,7 +240,7 @@ static TypeMut anal_while_stat(Semen* self, NodeArray* nodes, NodeWhileStat* nod
     ANAL(node->body);
 
     self->panic_mode = panic_mode;
-    return VOID;
+    return FAKE_NULL;
 }
 
 static TypeMut anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
@@ -281,7 +314,7 @@ static TypeMut anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayList
         Type* type2 = ANAL_GET_TYPE(node->data[i]);
         if(type != type2) {
             semen_error(self, SEMEN_MISMATCH, node->bracket_left, type, type2);
-            return VOID;
+            return FAKE_NULL;
         }
     }
 
@@ -294,7 +327,7 @@ static TypeMut anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLe
 
     if(!is_primitive(length_type, TYPE_INT)) {
         semen_non_int_length_error(self, node->bracket_left, length_type);
-        return VOID;
+        return FAKE_NULL;
     }
 
     return TYPE_MUT_OF((Type*) array_type_new(&nodes->type_hash_set, type));
@@ -321,6 +354,7 @@ static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
         case NODE_IF_STAT: return anal_if_stat(self, nodes, &node->as.if_stat);
         case NODE_WHILE_STAT: return anal_while_stat(self, nodes, &node->as.while_stat);
         case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
+        case NODE_FUN_DECL: return anal_fun_decl(self, nodes, &node->as.fun_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);
         case NODE_INDEX_OP: return anal_index_op(self, nodes, &node->as.index_op);

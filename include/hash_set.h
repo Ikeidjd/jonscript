@@ -1,12 +1,14 @@
 #pragma once
 
+#include <stdlib.h>
+
 // (element->hash & (self->size - 1)) is like (element->hash % self->capacity) but more optimized. Only works with powers of two, though
 
-#define HASH_SET_FIND_FUNCTION(hash_set_type, element_type, prefix) \
+#define HASH_SET_FIND_FUNCTION(hash_set_type, element_type, equality_function, prefix) \
     element_type prefix ## _find(hash_set_type* self, element_type element) { \
         size_t index = (element->hash & (self->size - 1)); \
         for(size_t counter = 0; counter < self->size && self->data[index] != NULL; counter++) { \
-            if(self->data[index]->hash == element->hash) return self->data[index]; \
+            if(equality_function(self->data[index], element)) return self->data[index]; \
             index = ((index + 1) & (self->size - 1)); \
         } \
         return NULL; \

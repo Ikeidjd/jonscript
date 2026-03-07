@@ -54,12 +54,12 @@ void node_fprintln(FILE* file, NodeArray* array, size_t index, size_t indentatio
         }
         case NODE_FUN_DECL: {
             NodeFunDecl* node = &base_node->as.fun_decl;
-            fprintf(file, "NodeFunDecl: (");
+            fprintf(file, "NodeFunDecl: ");
             function_type_fprint(file, node->type);
-            fprintf(file, "), params(");
-            for(size_t i = 0; i < node->type->param_count; i++) {
+            fprintf(file, ", params(");
+            for(size_t i = 0; i < node->type->param_length; i++) {
                 fprintf(file, "%.*s", node->param_names[i].text_len, node->param_names[i].text);
-                if(i + 1 < node->type->param_count) fprintf(file, ", ");
+                if(i + 1 < node->type->param_length) fprintf(file, ", ");
             }
             fprintf(file, ")\n");
             node_fprintln(file, array, node->body, indentation + 4);

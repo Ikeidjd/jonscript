@@ -11,6 +11,7 @@ typedef struct NodeProgram {
     NodeIndex* data;
     size_t length;
     size_t capacity;
+    bool create_scope;
 } NodeProgram;
 
 typedef struct NodeVarDecl {

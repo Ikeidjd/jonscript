@@ -19,7 +19,17 @@ void str_pool_destruct(StrPool self) {
     free(self.data);
 }
 
-HASH_SET_FIND_FUNCTION(StrPool, ObjectStr*, str_pool)
+static bool str_equals(ObjectStr* left, ObjectStr* right) {
+    if(left->length != right->length) return false;
+
+    for(size_t i = 0; i < left->length; i++) {
+        if(left->data[i] != right->data[i]) return false;
+    }
+
+    return true;
+}
+
+HASH_SET_FIND_FUNCTION(StrPool, ObjectStr*, str_equals, str_pool)
 HASH_SET_INSERT_NO_RESIZE_AND_NO_CHECK_DUPLICATES_FUNCTION(StrPool, ObjectStr*, str_pool)
 HASH_SET_RESIZE_FUNCTION(StrPool, ObjectStr*, str_pool)
 

@@ -1,4 +1,5 @@
 function add(a: int, b: int) -> int {
+    return a + b;
 }
 
 function mult_str(s: str, n: int) -> str {
@@ -9,8 +10,14 @@ function mult_str(s: str, n: int) -> str {
         out = out .. s;
         i = i + 1;
     }
+
+    return out;
 }
 
 function println_cool(s: str) {
     println("----" .. s .. "----");
 }
+
+println(mult_str("*", 10));
+println(add(10, 20));
+println_cool("The Low Taper Fade is still MASSIVE");

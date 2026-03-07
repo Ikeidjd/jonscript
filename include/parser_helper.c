@@ -67,7 +67,7 @@ static void parser_error_too_many_params(Parser* self, Token function_name) {
     parser_signal_error(self);
 
     fprintf(stderr, "Too many parameters for function %.*s on line %d, pos %d. Maximum is %d\n",
-        function_name.text_len, function_name.text, function_name.line, function_name.pos, MAX_PARAM_COUNT);
+        function_name.text_len, function_name.text, function_name.line, function_name.pos, MAX_PARAM_LENGTH);
 }
 
 static void parser_error_token_type(Parser* self, TokenType expected) {
