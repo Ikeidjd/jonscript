@@ -12,7 +12,7 @@ int main() {
     Chunk chunk = chunk_new();
     StrPool str_pool = str_pool_new();
 
-    TokenArray tokens = lex("res/fibonacci/fourthbonacci.jon", &had_error);
+    TokenArray tokens = lex("res/main.jon", &had_error);
     if(had_error) goto End1;
 
 #ifdef DEBUG_PRINT_TOKENS
