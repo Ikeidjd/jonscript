@@ -49,9 +49,9 @@ void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t in
         }
         case NODE_VAR_DECL: {
             NodeVarDecl* node = &base_node->as.var_decl;
-            fprintf(file, "NodeVarDecl: %s ", node->is_mutable ? "mut" : "let");
-            type_fprint(file, node->var_type);
-            fprintf(file, " %.*s\n", node->name.text_len, node->name.text);
+            fprintf(file, "NodeVarDecl: %s", node->is_mutable ? "mut" : "let");
+            fprintf(file, " %.*s: ", node->name.text_len, node->name.text);
+            type_fprintln(file, node->var_type);
             node_fprintln(file, array, node->value, indentation + 4);
             break;
         }

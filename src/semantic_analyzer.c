@@ -166,7 +166,7 @@ static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
 
 static TypeMut semen_get_type_mut_and_index_of_local(Semen* self, Token name, size_t* out_index) {
     // i can't be unsigned (and therefore can't be size_t) because it would mess with the i >= 0
-    for(long long i = self->locals_top - 1; i >= self->stack_frame_start_index; i--) {
+    for(long long i = (long long) self->locals_top - 1; i >= self->stack_frame_start_index; i--) {
         LocalVar* local = &self->locals[i];
         if(name.text_len == local->name.text_len && strncmp(name.text, local->name.text, name.text_len) == 0) {
             *out_index = ((size_t) i) - self->stack_frame_start_index;
@@ -198,9 +198,9 @@ static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
 }
 
 static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
-    Type* value_type = ANAL_GET_TYPE(node->value);
-
     semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
+
+    Type* value_type = ANAL_GET_TYPE(node->value);
     if(node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
 
     return FAKE_NULL;
