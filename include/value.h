@@ -38,3 +38,12 @@ void value_println(Value self);
 #define AS_STR(value) AS_OBJECT(value, ObjectStr)
 #define AS_ARRAY(value) AS_OBJECT(value, ObjectArray)
 #define AS_FUNCTION(value) AS_OBJECT(value, ObjectFunction)
+#define AS_CAPTURE(value) AS_OBJECT(value, ObjectCapture)
+#define AS_CLOSURE(value) AS_OBJECT(value, ObjectClosure)
+
+#define IS_OBJECT(value, of_type) ((value).type == VALUE_OBJECT && value.as.object->type == (of_type))
+#define IS_STR(value) IS_OBJECT(value, OBJECT_STR)
+#define IS_ARRAY(value) IS_OBJECT(value, OBJECT_ARRAY)
+#define IS_FUNCTION(value) IS_OBJECT(value, OBJECT_FUNCTION)
+#define IS_CAPTURE(value) IS_OBJECT(value, OBJECT_CAPTURE)
+#define IS_CLOSURE(value) IS_OBJECT(value, OBJECT_CLOSURE)

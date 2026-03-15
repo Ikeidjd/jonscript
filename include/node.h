@@ -25,6 +25,11 @@ typedef struct NodeFunDecl {
     Token name;
     FunctionType* type;
     Token* param_names;
+    struct {
+        size_t* data;
+        size_t length;
+        size_t capacity;
+    } captured_locals;
     NodeIndex body;
 } NodeFunDecl;
 
@@ -83,6 +88,7 @@ typedef struct NodeVar {
     Token name;
     size_t stack_index;
     bool should_set;
+    bool captured;
 } NodeVar;
 
 typedef struct NodeArrayListInit {

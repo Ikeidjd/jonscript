@@ -54,7 +54,7 @@ static ObjectStr* vm_object_str_register(VM* self, ObjectStr* str) {
     ObjectStr* old_str = str;
     str = str_pool_insert(&self->str_pool, str);
 
-    // If string wasn't found
+    // If string wasn't found, i.e., it's not a duplicate
     if(str == old_str) {
         str->base.next = self->object;
         self->object = (Object*) str;
@@ -73,7 +73,34 @@ static ObjectArray* vm_object_array_malloc(VM* self, size_t element_count) {
     return out;
 }
 
-static void vm_run(VM* self, Chunk* chunk, size_t stack_frame_start_index) {
+static ObjectCapture* vm_capture(VM* self, size_t index) {
+    if(IS_CAPTURE(self->stack[index])) return AS_CAPTURE(self->stack[index]);
+
+    ObjectCapture* capture = malloc(sizeof(ObjectCapture));
+    *capture = object_capture_new(self->stack[index]);
+    self->stack[index] = value_new_object((Object*) capture);
+
+    capture->base.next = self->object;
+    self->object = (Object*) capture;
+
+    return capture;
+}
+
+static ObjectClosure* vm_object_closure_malloc(VM* self, ObjectFunction* function) {
+    ObjectClosure* out = malloc(sizeof(ObjectClosure));
+    *out = object_closure_new(function);
+
+    for(size_t i = 0; i < function->captured_locals_length; i++) {
+        out->captured_locals[i] = vm_capture(self, self->sp - function->captured_locals[i]);
+    }
+
+    out->base.next = self->object;
+    self->object = (Object*) out;
+
+    return out;
+}
+
+static void vm_run(VM* self, ObjectClosure* closure, size_t stack_frame_start_index) {
 #define NUMERICAL_BIN_OP(operator) \
 do { \
     int64_t b = vm_pop(self).as.integer; \
@@ -98,10 +125,10 @@ do { \
     if(condition) ip += jump_length - 3; \
 } while(0)
 
-#define READ() chunk->code.data[ip++]
+#define READ() closure->chunk->code.data[ip++]
 
     size_t ip = 0;
-    while(ip < chunk->code.length) {
+    while(ip < closure->chunk->code.length) {
     #ifdef DEBUG_TRACE_EXECUTION
         for(size_t i = 0; i < self->sp; i++) {
             printf("[");
@@ -112,7 +139,7 @@ do { \
         if(self->sp == 0) printf("[]");
         printf("\n");
 
-        chunk_disassemble_op(chunk, ip);
+        chunk_disassemble_op(closure->chunk, ip);
     #endif
 
         Opcode op = READ();
@@ -123,7 +150,7 @@ do { \
             case OP_LOAD_VALUE: {
                 size_t index = READ();
                 index |= (READ() << 8);
-                vm_push(self, chunk->constants.data[index]);
+                vm_push(self, closure->chunk->constants.data[index]);
                 break;
             }
             case OP_LOAD_TRUE: {
@@ -134,16 +161,40 @@ do { \
                 vm_push(self, value_new_bool(false));
                 break;
             }
+            case OP_LOAD_CLOSURE: {
+                size_t index = READ();
+                index |= (READ() << 8);
+                ObjectFunction* function = AS_FUNCTION(closure->chunk->constants.data[index]);
+                ObjectClosure* closure = vm_object_closure_malloc(self, function);
+                vm_push(self, value_new_object((Object*) closure));
+                break;
+            }
             case OP_LOCAL_GET: {
                 size_t index = READ();
                 index |= (READ() << 8);
-                vm_push(self, self->stack[index + stack_frame_start_index]);
+                Value value = self->stack[index + stack_frame_start_index];
+                if(IS_CAPTURE(value)) value = AS_CAPTURE(value)->captured_value;
+                vm_push(self, value);
                 break;
             }
             case OP_LOCAL_SET: {
                 size_t index = READ();
                 index |= (READ() << 8);
-                self->stack[index + stack_frame_start_index] = vm_pop(self);
+                Value value = self->stack[index + stack_frame_start_index];
+                if(IS_CAPTURE(value)) AS_CAPTURE(value)->captured_value = vm_pop(self);
+                else self->stack[index + stack_frame_start_index] = vm_pop(self);
+                break;
+            }
+            case OP_CAPTURE_GET: {
+                size_t index = READ();
+                index |= (READ() << 8);
+                vm_push(self, closure->captured_locals[index]->captured_value);
+                break;
+            }
+            case OP_CAPTURE_SET: {
+                size_t index = READ();
+                index |= (READ() << 8);
+                closure->captured_locals[index]->captured_value = vm_pop(self);
                 break;
             }
             case OP_INDEX_GET: {
@@ -163,7 +214,7 @@ do { \
             case OP_CALL: {
                 size_t args_length = READ();
                 size_t new_stack_frame_start_index = self->sp - args_length - 1;
-                vm_run(self, AS_FUNCTION(self->stack[new_stack_frame_start_index])->chunk, new_stack_frame_start_index);
+                vm_run(self, AS_CLOSURE(self->stack[new_stack_frame_start_index]), new_stack_frame_start_index);
                 break;
             }
             case OP_POP:
@@ -302,7 +353,16 @@ void run(Chunk* chunk, StrPool str_pool) {
     self->str_pool = str_pool;
     self->object = NULL;
     self->sp = 0;
-    vm_run(self, chunk, 0);
 
+    ObjectClosure start = {
+        .base = object_new(OBJECT_CLOSURE),
+        .chunk = chunk,
+        .captured_locals = NULL,
+        .captured_locals_length = 0
+    };
+
+    vm_run(self, &start, 0);
+
+    object_closure_destruct(&start);
     vm_free(self);
 }

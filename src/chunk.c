@@ -42,6 +42,12 @@ void chunk_emit_load_value_op(Chunk* self, Value value) {
     code_emit_args(&self->code, OP_LOAD_VALUE, 2, TO_LE_2_BYTES(index));
 }
 
+void chunk_emit_load_closure_op(Chunk* self, ObjectFunction* function) {
+    object_array_push(&self->constants, value_new_object((Object*) function));
+    size_t index = self->constants.length - 1;
+    code_emit_args(&self->code, OP_LOAD_CLOSURE, 2, TO_LE_2_BYTES(index));
+}
+
 static size_t chunk_display_monoarg_op(Chunk* self, Opcode op, size_t byte_count, size_t offset) {
     opcode_print(op);
     offset++;
@@ -94,8 +100,11 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_CALL:
             return chunk_display_monoarg_op(self, op, 1, offset);
         case OP_LOAD_VALUE:
+        case OP_LOAD_CLOSURE:
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
+        case OP_CAPTURE_GET:
+        case OP_CAPTURE_SET:
         case OP_POP_N:
         case OP_ARRAYIFY_LIST:
         case OP_JUMP:

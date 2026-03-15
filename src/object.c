@@ -23,13 +23,19 @@ void object_free(Object* self) {
         case OBJECT_FUNCTION:
             object_function_free((ObjectFunction*) self);
             break;
+        case OBJECT_CAPTURE:
+            free(self);
+            break;
+        case OBJECT_CLOSURE:
+            object_closure_free((ObjectClosure*) self);
+            break;
     }
 }
 
 bool object_equals(Object* left, Object* right) {
     if(left->type != right->type) {
         fprintf(stderr, "Types of object don't match on equality. This should never happen.\n");
-        return false;
+        exit(-1);
     }
 
     switch(left->type) {
@@ -45,7 +51,11 @@ bool object_equals(Object* left, Object* right) {
             return true;
         }
         case OBJECT_FUNCTION:
+        case OBJECT_CLOSURE:
             return left == right;
+        case OBJECT_CAPTURE:
+            fprintf(stderr, "Attempt to perform equality on capture. This should never happen.\n");
+            exit(-1);
     }
 }
 
@@ -104,6 +114,16 @@ char* object_to_string(Object* self, size_t* length, bool* should_free) {
             sprintf(out, "<fn %p>", self);
             return out;
         }
+        case OBJECT_CLOSURE: {
+            *length = sizeof("<cl 00000000>");
+            *should_free = true;
+            char* out = malloc(*length);
+            sprintf(out, "<cl %p>", self);
+            return out;
+        }
+        case OBJECT_CAPTURE:
+            fprintf(stderr, "Attempt to stringify capture. This should never happen.\n");
+            exit(-1);
     }
 }
 
@@ -126,6 +146,14 @@ void object_fprint(FILE* file, Object* self) {
         }
         case OBJECT_FUNCTION:
             fprintf(file, "<fn %p>", self);
+            break;
+        case OBJECT_CLOSURE:
+            fprintf(file, "<cl %p>", self);
+            break;
+        case OBJECT_CAPTURE:
+            fprintf(file, "<capture: ");
+            value_fprint(file, ((ObjectCapture*) self)->captured_value);
+            fprintf(file, ">");
             break;
     }
 }
@@ -197,16 +225,18 @@ void object_array_free(ObjectArray* self) {
 }
 
 void object_array_push(ObjectArray* self, Value value) {
-    PUSH(self, value, 16);
+    DYNARRAY_PTR_PUSH(self, value, 16);
 }
 
-ObjectFunction object_function_new() {
+ObjectFunction object_function_new(size_t* captured_locals, size_t captured_locals_length) {
     Chunk* chunk = malloc(sizeof(Chunk));
     *chunk = chunk_new();
 
     return (ObjectFunction) {
         .base = object_new(OBJECT_FUNCTION),
-        .chunk = chunk
+        .chunk = chunk,
+        .captured_locals = captured_locals,
+        .captured_locals_length = captured_locals_length
     };
 }
 
@@ -216,5 +246,30 @@ void object_function_destruct(ObjectFunction* const self) {
 
 void object_function_free(ObjectFunction* self) {
     object_function_destruct(self);
+    free(self);
+}
+
+ObjectCapture object_capture_new(Value value) {
+    return (ObjectCapture) {
+        .base = object_new(OBJECT_CAPTURE),
+        .captured_value = value
+    };
+}
+
+ObjectClosure object_closure_new(ObjectFunction* function) {
+    return (ObjectClosure) {
+        .base = object_new(OBJECT_CLOSURE),
+        .chunk = function->chunk,
+        .captured_locals = malloc(function->captured_locals_length * sizeof(ObjectCapture*)),
+        .captured_locals_length = function->captured_locals_length
+    };
+}
+
+void object_closure_destruct(ObjectClosure* const self) {
+    free(self->captured_locals);
+}
+
+void object_closure_free(ObjectClosure* self) {
+    object_closure_destruct(self);
     free(self);
 }

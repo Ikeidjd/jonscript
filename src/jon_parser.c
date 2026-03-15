@@ -129,11 +129,11 @@ static NodeIndex parse_prefix_expr(Parser* self) {
                         DYNAMIC_ARRAY_NEW_PARTIAL()
                     };
 
-                    PUSH(&GET(node).as.array_list_init, element, 16);
+                    DYNARRAY_PTR_PUSH(&GET(node).as.array_list_init, element, 16);
 
                     while(parser_matches(self, TOKEN_COMMA)) {
                         element = PROPAGATE_ERROR(parse_expr(self));
-                        PUSH(&GET(node).as.array_list_init, element, 16);
+                        DYNARRAY_PTR_PUSH(&GET(node).as.array_list_init, element, 16);
                     }
                 }
             }
@@ -143,6 +143,7 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             node = node_array_push(&self->nodes, NODE_VAR);
             GET(node).as.var.name = token;
             GET(node).as.var.should_set = false;
+            GET(node).as.var.captured = false;
             break;
         case TOKEN_KEYWORD_TRUE:
         case TOKEN_KEYWORD_FALSE:
@@ -269,6 +270,9 @@ static NodeIndex parse_func_decl(Parser* self) {
     NodeIndex node = node_array_push(&self->nodes, NODE_FUN_DECL);
 
     GET(node).as.fun_decl.name = PROPAGATE_ERROR(parser_consume(self, TOKEN_IDENTIFIER, "function name"));
+    GET(node).as.fun_decl.captured_locals.data = NULL;
+    GET(node).as.fun_decl.captured_locals.length = 0;
+    GET(node).as.fun_decl.captured_locals.capacity = 0;
 
     PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_LEFT, "'('"));
 
@@ -464,7 +468,7 @@ static NodeIndex parse_program(Parser* self, bool in_block) {
         }
 
         if(self->panic_mode) parser_sync(self);
-        else PUSH(&GET(node).as.program, decl_or_stat, 16);
+        else DYNARRAY_PTR_PUSH(&GET(node).as.program, decl_or_stat, 16);
     }
 
     return node;

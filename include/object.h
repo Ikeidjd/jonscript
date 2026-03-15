@@ -7,7 +7,9 @@
 typedef enum ObjectType {
     OBJECT_STR,
     OBJECT_ARRAY,
-    OBJECT_FUNCTION
+    OBJECT_FUNCTION,
+    OBJECT_CAPTURE,
+    OBJECT_CLOSURE
 } ObjectType;
 
 struct Object {
@@ -59,9 +61,30 @@ typedef struct Chunk Chunk;
 typedef struct ObjectFunction {
     Object base;
     Chunk* chunk;
+    size_t* captured_locals;
+    size_t captured_locals_length;
 } ObjectFunction;
 
-ObjectFunction object_function_new();
+ObjectFunction object_function_new(size_t* captured_locals, size_t captured_locals_length);
 
 void object_function_destruct(ObjectFunction* const self);
 void object_function_free(ObjectFunction* self);
+
+typedef struct ObjectCapture {
+    Object base;
+    Value captured_value;
+} ObjectCapture;
+
+ObjectCapture object_capture_new(Value value);
+
+typedef struct ObjectClosure {
+    Object base;
+    Chunk* chunk;
+    ObjectCapture** captured_locals;
+    size_t captured_locals_length;
+} ObjectClosure;
+
+ObjectClosure object_closure_new(ObjectFunction* function);
+
+void object_closure_destruct(ObjectClosure* const self);
+void object_closure_free(ObjectClosure* self);

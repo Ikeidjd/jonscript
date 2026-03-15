@@ -21,6 +21,7 @@ void node_array_destruct(NodeArray self) {
                 break;
             case NODE_FUN_DECL:
                 free(self.data[i].as.fun_decl.param_names);
+                free(self.data[i].as.fun_decl.captured_locals.data); // This isn't necessary, since ownership is transferred to an ObjectFunction, but it gets set to NULL, so it's fine
                 break;
             case NODE_FUN_CALL:
                 free(self.data[i].as.fun_call.args);
@@ -33,7 +34,7 @@ void node_array_destruct(NodeArray self) {
 }
 
 size_t node_array_push(NodeArray* self, NodeType type) {
-    PUSH(self, (Node) { .type = type }, 16);
+    DYNARRAY_PTR_PUSH(self, (Node) { .type = type }, 16);
     return self->length - 1;
 }
 
@@ -63,6 +64,11 @@ void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t in
             for(size_t i = 0; i < node->type->params_length; i++) {
                 fprintf(file, "%.*s", node->param_names[i].text_len, node->param_names[i].text);
                 if(i + 1 < node->type->params_length) fprintf(file, ", ");
+            }
+            fprintf(file, "), captured(");
+            for(size_t i = 0; i < node->captured_locals.length; i++) {
+                fprintf(file, "%zu", node->captured_locals.data[i]);
+                if(i + 1 < node->captured_locals.length) fprintf(file, ", ");
             }
             fprintf(file, ")\n");
             node_fprintln(file, array, node->body, indentation + 4);
@@ -137,7 +143,7 @@ void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t in
             NodeVar* node = &base_node->as.var;
             fprintf(file, "NodeVar: ");
             token_fprint(file, node->name);
-            fprintf(file, " %d %s\n", node->stack_index, node->should_set ? "SET" : "GET");
+            fprintf(file, " %d, %s, %s\n", node->stack_index, node->should_set ? "SET" : "GET", node->captured ? "CAPTURED" : "NOT CAPTURED");
             break;
         }
         case NODE_ARRAY_LIST_INIT: {

@@ -192,7 +192,7 @@ TokenArray token_array_new(char* string_data, size_t string_data_length) {
 }
 
 void token_array_push(TokenArray* self, Token token) {
-    PUSH(self, token, 16);
+    DYNARRAY_PTR_PUSH(self, token, 16);
 }
 
 void token_array_destruct(TokenArray self) {

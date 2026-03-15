@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dynamic_array.h"
 #include "stack.h"
 
 #define PROPAGATE_ERROR(statement) \
@@ -32,8 +33,8 @@ typedef struct Semen {
     LocalVar* locals;
     size_t locals_top;
     size_t locals_scope;
-    Type* cur_function_type;
     size_t stack_frame_start_index;
+    NodeFunDecl* cur_fun_decl;
     bool had_error;
     bool panic_mode;
 } Semen;
@@ -49,8 +50,8 @@ static Semen semen_new() {
         .locals = malloc(STACK_SIZE),
         .locals_top = 0,
         .locals_scope = 0,
-        .cur_function_type = NULL,
         .stack_frame_start_index = 0,
+        .cur_fun_decl = NULL,
         .had_error = false,
         .panic_mode = false
     };
@@ -129,10 +130,10 @@ static void semen_error_return_out_of_function(Semen* self, Token return_token) 
     fprintf(stderr, "'return' should not appear outside of a function on line %d, pos %d.\n", return_token.line, return_token.pos);
 }
 
-static void semen_error_wrong_return(Semen* self, Token return_token, Type* expected, Type* got) {
+static void semen_error_wrong_return(Semen* self, Token return_token, Type* got) {
     semen_signal_error(self);
     fprintf(stderr, "Should have returned ");
-    type_fprint(stderr, expected);
+    type_fprint(stderr, self->cur_fun_decl->type->return_type);
     fprintf(stderr, ", but returned ");
     type_fprint(stderr, got);
     fprintf(stderr, " on line %d, pos %d.\n", return_token.line, return_token.pos);
@@ -164,18 +165,21 @@ static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
     };
 }
 
-static TypeMut semen_get_type_mut_and_index_of_local(Semen* self, Token name, size_t* out_index) {
+static LocalVar* semen_get_local(Semen* self, Token name, size_t* out_index) {
     // i can't be unsigned (and therefore can't be size_t) because it would mess with the i >= 0
-    for(long long i = (long long) self->locals_top - 1; i >= self->stack_frame_start_index; i--) {
+    for(long long i = (long long) self->locals_top - 1; i >= 0; i--) {
         LocalVar* local = &self->locals[i];
+
         if(name.text_len == local->name.text_len && strncmp(name.text, local->name.text, name.text_len) == 0) {
-            *out_index = ((size_t) i) - self->stack_frame_start_index;
-            return local->type_mut;
+            if(i < self->stack_frame_start_index) *out_index = self->stack_frame_start_index - ((size_t) i) - 1;
+            else *out_index = ((size_t) i) - self->stack_frame_start_index;
+
+            return local;
         }
     }
 
     semen_error_not_found(self, name);
-    return FAKE_NULL;
+    return NULL;
 }
 
 static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index);
@@ -236,12 +240,12 @@ static TypeMut anal_fun_decl(Semen* self, NodeArray* nodes, NodeFunDecl* node) {
     bool panic_mode = self->panic_mode;
     self->panic_mode = false;
 
-    Type* old_function_type = self->cur_function_type;
-    self->cur_function_type = node->type->return_type;
+    NodeFunDecl* old_fun_decl = self->cur_fun_decl;
+    self->cur_fun_decl = node;
 
     ANAL(node->body);
 
-    self->cur_function_type = old_function_type;
+    self->cur_fun_decl = old_fun_decl;
     self->stack_frame_start_index = old_stack_frame_start_index;
 
     self->panic_mode = panic_mode;
@@ -324,8 +328,8 @@ static TypeMut anal_return_stat(Semen* self, NodeArray* nodes, NodeReturnStat* n
         type = void_type_new(&nodes->type_hash_set);
     }
 
-    if(self->cur_function_type == NULL) semen_error_return_out_of_function(self, node->return_token);
-    else if(self->cur_function_type != type) semen_error_wrong_return(self, node->return_token, self->cur_function_type, type);
+    if(self->cur_fun_decl == NULL) semen_error_return_out_of_function(self, node->return_token);
+    else if(self->cur_fun_decl->type->return_type != type) semen_error_wrong_return(self, node->return_token, type);
 
     return FAKE_NULL;
 }
@@ -424,7 +428,22 @@ static TypeMut anal_fun_call(Semen* self, NodeArray* nodes, NodeFunCall* node) {
 }
 
 static TypeMut anal_var(Semen* self, NodeArray* nodes, NodeVar* node) {
-    return semen_get_type_mut_and_index_of_local(self, node->name, &node->stack_index);
+    LocalVar* local = PROPAGATE_ERROR(semen_get_local(self, node->name, &node->stack_index));
+
+    if(local->scope < self->locals[self->stack_frame_start_index].scope) {
+        node->captured = true;
+
+        for(size_t i = 0; i <= self->cur_fun_decl->captured_locals.length; i++) {
+            if(i == self->cur_fun_decl->captured_locals.length) DYNARRAY_NON_PTR_PUSH(self->cur_fun_decl->captured_locals, node->stack_index, 16);
+
+            if(self->cur_fun_decl->captured_locals.data[i] == node->stack_index) {
+                node->stack_index = i;
+                break;
+            }
+        }
+    }
+
+    return local->type_mut;
 }
 
 static TypeMut anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayListInit* node) {

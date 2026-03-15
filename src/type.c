@@ -68,7 +68,6 @@ HASH_SET_FIND_FUNCTION(TypeHashSet, Type*, type_equals, type_hash_set)
 HASH_SET_INSERT_NO_RESIZE_AND_NO_CHECK_DUPLICATES_FUNCTION(TypeHashSet, Type*, type_hash_set)
 HASH_SET_RESIZE_FUNCTION(TypeHashSet, Type*, type_hash_set)
 
-// Haha, self-insert reference
 static Type* type_hash_set_insert(TypeHashSet* self, Type* type, size_t size_in_bytes_to_deallocate_in_case_of_duplicate) {
     if(self->size <= self->occupied * 2) type_hash_set_resize(self);
 

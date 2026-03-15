@@ -14,7 +14,6 @@
         return NULL; \
     }
 
-// A self-insert without resizing, huh... what would be a self-insert with resizing, an inflation fantasy? Really makes you think. The no_check_duplicates could be selfcest
 #define HASH_SET_INSERT_NO_RESIZE_AND_NO_CHECK_DUPLICATES_FUNCTION(hash_set_type, element_type, prefix) \
     static void prefix ## _insert_no_resize_and_no_check_duplicates(hash_set_type* self, element_type element) { \
         size_t index = (element->hash & (self->size - 1)); \

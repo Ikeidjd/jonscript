@@ -18,11 +18,20 @@ void opcode_fprint(FILE* file, Opcode self) {
         case OP_LOAD_FALSE:
             fprintf(file, "OP_LOAD_FALSE");
             break;
+        case OP_LOAD_CLOSURE:
+            fprintf(file, "OP_LOAD_CLOSURE");
+            break;
         case OP_LOCAL_GET:
             fprintf(file, "OP_LOCAL_GET");
             break;
         case OP_LOCAL_SET:
             fprintf(file, "OP_LOCAL_SET");
+            break;
+        case OP_CAPTURE_GET:
+            fprintf(file, "OP_CAPTURE_GET");
+            break;
+        case OP_CAPTURE_SET:
+            fprintf(file, "OP_CAPTURE_SET");
             break;
         case OP_INDEX_GET:
             fprintf(file, "OP_INDEX_GET");
@@ -136,7 +145,7 @@ void code_destruct(Code self) {
 }
 
 void code_emit(Code* self, Opcode opcode) {
-    PUSH(self, opcode, 16);
+    DYNARRAY_PTR_PUSH(self, opcode, 16);
 }
 
 void code_emit_args(Code* self, Opcode opcode, size_t args_length, byte args[]) {

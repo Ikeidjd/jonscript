@@ -1,0 +1,2 @@
+let name: str = readln("Full name: ");
+println("Hello, " .. name .. "!");

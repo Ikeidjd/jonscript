@@ -11,9 +11,12 @@ typedef enum Opcode {
     OP_LOAD_VALUE,
     OP_LOAD_TRUE,
     OP_LOAD_FALSE,
+    OP_LOAD_CLOSURE,
 
     OP_LOCAL_GET,
     OP_LOCAL_SET,
+    OP_CAPTURE_GET,
+    OP_CAPTURE_SET,
     OP_INDEX_GET,
     OP_INDEX_SET,
 

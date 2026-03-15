@@ -16,7 +16,7 @@ void chunk_destruct(Chunk self);
 void chunk_free(Chunk* self);
 
 void chunk_emit_load_value_op(Chunk* self, Value value);
-void chunk_emit_load_str_op(Chunk* self, Token token);
+void chunk_emit_load_closure_op(Chunk* self, ObjectFunction* function);
 
 size_t chunk_disassemble_op(Chunk* self, size_t offset);
 void chunk_disassemble(Chunk* self);

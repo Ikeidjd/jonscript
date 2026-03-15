@@ -28,8 +28,9 @@ static void comp_var_decl(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeVa
 
 static void comp_fun_decl(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeFunDecl* node) {
     ObjectFunction* function = malloc(sizeof(ObjectFunction));
-    *function = object_function_new();
-    chunk_emit_load_value_op(chunk, value_new_object((Object*) function));
+    *function = object_function_new(node->captured_locals.data, node->captured_locals.length);
+    node->captured_locals.data = NULL;
+    chunk_emit_load_closure_op(chunk, function);
     comp(self, function->chunk, nodes, node->body);
 }
 
@@ -148,7 +149,9 @@ static void comp_fun_call(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeFu
 }
 
 static void comp_var(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeVar* node) {
-    code_emit_args(&chunk->code, node->should_set ? OP_LOCAL_SET : OP_LOCAL_GET, 2, TO_LE_2_BYTES(node->stack_index));
+    Opcode get = node->captured ? OP_CAPTURE_GET : OP_LOCAL_GET;
+    Opcode set = node->captured ? OP_CAPTURE_SET : OP_LOCAL_SET;
+    code_emit_args(&chunk->code, node->should_set ? set : get, 2, TO_LE_2_BYTES(node->stack_index));
 }
 
 static void comp_array_list_init(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeArrayListInit* node) {
