@@ -20,7 +20,7 @@ void chunk_destruct(Chunk self) {
 
         Object* object = self.constants.data[i].as.object;
     #ifdef DEBUG_PRINT_FREED_OBJECTS
-        printf("Freeing object %p of type %d: ", object, object->type);
+        printf("Freeing object %p of type %s: ", object, object_type_to_string(object->type));
         object_println(object);
     #endif
         Object* next = object->next;
@@ -49,7 +49,7 @@ void chunk_emit_load_closure_op(Chunk* self, ObjectFunction* function) {
 }
 
 static size_t chunk_display_monoarg_op(Chunk* self, Opcode op, size_t byte_count, size_t offset) {
-    opcode_print(op);
+    printf("%s", opcode_to_string(op));
     offset++;
 
     uint64_t value = 0;
@@ -64,7 +64,7 @@ static size_t chunk_display_monoarg_op(Chunk* self, Opcode op, size_t byte_count
 }
 
 static size_t chunk_display_simple_op(Opcode op, size_t offset) {
-    opcode_println(op);
+    printf("%s\n", opcode_to_string(op));
     return offset + 1;
 }
 

@@ -89,18 +89,14 @@ static void semen_error(Semen* self, SemenError error, Token op, Type* left, Typ
 
 static void semen_error_non_int_length(Semen* self, Token pos, Type* type) {
     semen_signal_error(self);
-    fprintf(stderr, "Length should be ");
-    primitive_type_fprint(stderr, TYPE_INT);
-    fprintf(stderr, ", but was ");
+    fprintf(stderr, "Length should be %s, but was ", primitive_type_to_string(TYPE_INT));
     type_fprint(stderr, type);
     fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
 static void semen_error_non_bool_condition(Semen* self, Token pos, Type* type) {
     semen_signal_error(self);
-    fprintf(stderr, "Condition should be ");
-    primitive_type_fprint(stderr, TYPE_BOOL);
-    fprintf(stderr, ", but was ");
+    fprintf(stderr, "Condition should be %s, but was ", primitive_type_to_string(TYPE_BOOL));
     type_fprint(stderr, type);
     fprintf(stderr, " on line %d, pos %d.\n", pos.line, pos.pos);
 }
@@ -202,10 +198,10 @@ static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
 }
 
 static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
-    semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
-
     Type* value_type = ANAL_GET_TYPE(node->value);
     if(node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
+
+    semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
 
     return FAKE_NULL;
 }

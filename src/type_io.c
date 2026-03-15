@@ -5,7 +5,7 @@
 void type_fprint(FILE* file, Type* self) {
     switch(self->type) {
         case TTYPE_PRIMITIVE:
-            primitive_type_fprint(file, ((PrimitiveTypeObj*) self)->type);
+            fprintf(file, "%s", primitive_type_to_string(((PrimitiveTypeObj*) self)->type));
             break;
         case TTYPE_ARRAY:
             array_type_fprint(file, (ArrayType*) self);
@@ -32,31 +32,12 @@ void type_println(Type* self) {
     type_fprintln(stdout, self);
 }
 
-void primitive_type_fprint(FILE* file, PrimitiveType self) {
+char* primitive_type_to_string(PrimitiveType self) {
     switch(self) {
-        case TYPE_INT:
-            fprintf(file, "int");
-            break;
-        case TYPE_BOOL:
-            fprintf(file, "bool");
-            break;
-        case TYPE_STR:
-            fprintf(file, "str");
-            break;
+        case TYPE_INT: return "int";
+        case TYPE_BOOL: return "bool";
+        case TYPE_STR: return "str";
     }
-}
-
-void primitive_type_fprintln(FILE* file, PrimitiveType self) {
-    primitive_type_fprint(file, self);
-    fprintf(file, "\n");
-}
-
-void primitive_type_print(PrimitiveType self) {
-    primitive_type_fprint(stdout, self);
-}
-
-void primitive_type_println(PrimitiveType self) {
-    primitive_type_fprintln(stdout, self);
 }
 
 void array_type_fprint(FILE* file, ArrayType* self) {

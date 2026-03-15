@@ -4,136 +4,47 @@
 
 #include "dynamic_array.h"
 
-void opcode_fprint(FILE* file, Opcode self) {
+char* opcode_to_string(Opcode self) {
     switch(self) {
-        case OP_LOAD_BYTE:
-            fprintf(file, "OP_LOAD_BYTE");
-            break;
-        case OP_LOAD_VALUE:
-            fprintf(file, "OP_LOAD_VALUE");
-            break;
-        case OP_LOAD_TRUE:
-            fprintf(file, "OP_LOAD_TRUE");
-            break;
-        case OP_LOAD_FALSE:
-            fprintf(file, "OP_LOAD_FALSE");
-            break;
-        case OP_LOAD_CLOSURE:
-            fprintf(file, "OP_LOAD_CLOSURE");
-            break;
-        case OP_LOCAL_GET:
-            fprintf(file, "OP_LOCAL_GET");
-            break;
-        case OP_LOCAL_SET:
-            fprintf(file, "OP_LOCAL_SET");
-            break;
-        case OP_CAPTURE_GET:
-            fprintf(file, "OP_CAPTURE_GET");
-            break;
-        case OP_CAPTURE_SET:
-            fprintf(file, "OP_CAPTURE_SET");
-            break;
-        case OP_INDEX_GET:
-            fprintf(file, "OP_INDEX_GET");
-            break;
-        case OP_INDEX_SET:
-            fprintf(file, "OP_INDEX_SET");
-            break;
-        case OP_CALL:
-            fprintf(file, "OP_CALL");
-            break;
-        case OP_POP:
-            fprintf(file, "OP_POP");
-            break;
-        case OP_POP_N:
-            fprintf(file, "OP_POP_N");
-            break;
-        case OP_ARRAYIFY_LIST:
-            fprintf(file, "OP_ARRAYIFY_LIST");
-            break;
-        case OP_ARRAYIFY_LENGTH:
-            fprintf(file, "OP_ARRAYIFY_LENGTH");
-            break;
-        case OP_ADD:
-            fprintf(file, "OP_ADD");
-            break;
-        case OP_SUB:
-            fprintf(file, "OP_SUB");
-            break;
-        case OP_MUL:
-            fprintf(file, "OP_MUL");
-            break;
-        case OP_DIV:
-            fprintf(file, "OP_DIV");
-            break;
-        case OP_MOD:
-            fprintf(file, "OP_MOD");
-            break;
-        case OP_BITWISE_AND:
-            fprintf(file, "OP_BITWISE_AND");
-            break;
-        case OP_BITWISE_OR:
-            fprintf(file, "OP_BITWISE_OR");
-            break;
-        case OP_LT:
-            fprintf(file, "OP_LT");
-            break;
-        case OP_LE:
-            fprintf(file, "OP_LE");
-            break;
-        case OP_GT:
-            fprintf(file, "OP_GT");
-            break;
-        case OP_GE:
-            fprintf(file, "OP_GE");
-            break;
-        case OP_EQUALS:
-            fprintf(file, "OP_EQUALS");
-            break;
-        case OP_CONCAT:
-            fprintf(file, "OP_CONCAT");
-            break;
-        case OP_PRINT:
-            fprintf(file, "OP_PRINT");
-            break;
-        case OP_PRINTLN:
-            fprintf(file, "OP_PRINTLN");
-            break;
-        case OP_JUMP:
-            fprintf(file, "OP_JUMP");
-            break;
-        case OP_JUMP_IF_TRUE:
-            fprintf(file, "OP_JUMP_IF_TRUE");
-            break;
-        case OP_JUMP_IF_FALSE:
-            fprintf(file, "OP_JUMP_IF_FALSE");
-            break;
-        case OP_JUMP_IF_FALSE_POP:
-            fprintf(file, "OP_JUMP_IF_FALSE_POP");
-            break;
-        case OP_LOOP:
-            fprintf(file, "OP_LOOP");
-            break;
-        case OP_RETURN:
-            fprintf(file, "OP_RETURN");
-            break;
-        case OP_RETURN_VALUE:
-            fprintf(file, "OP_RETURN_VALUE");
-            break;
+        case OP_LOAD_BYTE: return "OP_LOAD_BYTE";
+        case OP_LOAD_VALUE: return "OP_LOAD_VALUE";
+        case OP_LOAD_TRUE: return "OP_LOAD_TRUE";
+        case OP_LOAD_FALSE: return "OP_LOAD_FALSE";
+        case OP_LOAD_CLOSURE: return "OP_LOAD_CLOSURE";
+        case OP_LOCAL_GET: return "OP_LOCAL_GET";
+        case OP_LOCAL_SET: return "OP_LOCAL_SET";
+        case OP_CAPTURE_GET: return "OP_CAPTURE_GET";
+        case OP_CAPTURE_SET: return "OP_CAPTURE_SET";
+        case OP_INDEX_GET: return "OP_INDEX_GET";
+        case OP_INDEX_SET: return "OP_INDEX_SET";
+        case OP_CALL: return "OP_CALL";
+        case OP_POP: return "OP_POP";
+        case OP_POP_N: return "OP_POP_N";
+        case OP_ARRAYIFY_LIST: return "OP_ARRAYIFY_LIST";
+        case OP_ARRAYIFY_LENGTH: return "OP_ARRAYIFY_LENGTH";
+        case OP_ADD: return "OP_ADD";
+        case OP_SUB: return "OP_SUB";
+        case OP_MUL: return "OP_MUL";
+        case OP_DIV: return "OP_DIV";
+        case OP_MOD: return "OP_MOD";
+        case OP_BITWISE_AND: return "OP_BITWISE_AND";
+        case OP_BITWISE_OR: return "OP_BITWISE_OR";
+        case OP_LT: return "OP_LT";
+        case OP_LE: return "OP_LE";
+        case OP_GT: return "OP_GT";
+        case OP_GE: return "OP_GE";
+        case OP_EQUALS: return "OP_EQUALS";
+        case OP_CONCAT: return "OP_CONCAT";
+        case OP_PRINT: return "OP_PRINT";
+        case OP_PRINTLN: return "OP_PRINTLN";
+        case OP_JUMP: return "OP_JUMP";
+        case OP_JUMP_IF_TRUE: return "OP_JUMP_IF_TRUE";
+        case OP_JUMP_IF_FALSE: return "OP_JUMP_IF_FALSE";
+        case OP_JUMP_IF_FALSE_POP: return "OP_JUMP_IF_FALSE_POP";
+        case OP_LOOP: return "OP_LOOP";
+        case OP_RETURN: return "OP_RETURN";
+        case OP_RETURN_VALUE: return "OP_RETURN_VALUE";
     }
-}
-
-void opcode_fprintln(FILE* file, Opcode self) {
-    opcode_fprint(file, self);
-    fprintf(file, "\n");
-}
-
-void opcode_print(Opcode self) {
-    opcode_fprint(stdout, self);
-}
-
-void opcode_println(Opcode self) {
-    opcode_fprintln(stdout, self);
 }
 
 Code code_new() {

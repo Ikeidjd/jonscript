@@ -59,10 +59,7 @@ typedef enum Opcode {
     OP_RETURN_VALUE
 } Opcode;
 
-void opcode_fprint(FILE* file, Opcode self);
-void opcode_fprintln(FILE* file, Opcode self);
-void opcode_print(Opcode self);
-void opcode_println(Opcode self);
+char* opcode_to_string(Opcode self);
 
 typedef struct Code {
     byte* data;

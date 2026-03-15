@@ -82,7 +82,7 @@ static Precedence parser_get_cur_prec(Parser* self) {
         case TOKEN_KEYWORD_INT:
         case TOKEN_KEYWORD_BOOL:
         case TOKEN_KEYWORD_STR:
-        case TOKEN_KEYWORD_FUNCTION:
+        case TOKEN_KEYWORD_FN:
         case TOKEN_KEYWORD_RETURN:
         case TOKEN_KEYWORD_TRUE:
         case TOKEN_KEYWORD_FALSE:
@@ -233,6 +233,43 @@ static Type* parse_type(Parser* self) {
         case TOKEN_KEYWORD_STR:
             type = (Type*) primitive_type_new(&self->nodes.type_hash_set, TYPE_STR);
             break;
+        case TOKEN_KEYWORD_FN: {
+            Token keyword_fn = parser_prev(self);
+
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_BRACKET_LEFT, "'['"));
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_LEFT, "'('"));
+
+            size_t params_length = 0;
+            Type* param_types[MAX_PARAM_LENGTH];
+
+            for(; !parser_peek_matches(self, TOKEN_PAREN_RIGHT); params_length++) {
+                if(params_length == MAX_PARAM_LENGTH) {
+                    parser_error_too_many_params_for_type(self, keyword_fn);
+                    return 0;
+                }
+
+                param_types[params_length] = PROPAGATE_ERROR(parse_type(self));
+
+                if(!parser_matches(self, TOKEN_COMMA)) {
+                    params_length++;
+                    break;
+                }
+            }
+
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_RIGHT, "')'"));
+
+            Type* return_type;
+            if(parser_matches(self, TOKEN_ARROW)) {
+                return_type = PROPAGATE_ERROR(parse_type(self));
+            } else {
+                return_type = void_type_new(&self->nodes.type_hash_set);
+            }
+
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_BRACKET_RIGHT, "']'"));
+
+            type = (Type*) function_type_new(&self->nodes.type_hash_set, param_types, params_length, return_type);
+            break;
+        }
         default:
             parser_error_string(self, "type");
             return NULL;
@@ -449,7 +486,7 @@ static NodeIndex parse_program(Parser* self, bool in_block) {
             case TOKEN_KEYWORD_MUT:
                 decl_or_stat = parse_var_decl(self);
                 break;
-            case TOKEN_KEYWORD_FUNCTION:
+            case TOKEN_KEYWORD_FN:
                 decl_or_stat = parse_func_decl(self);
                 break;
             case TOKEN_BRACE_LEFT:

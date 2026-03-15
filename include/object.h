@@ -12,6 +12,8 @@ typedef enum ObjectType {
     OBJECT_CLOSURE
 } ObjectType;
 
+char* object_type_to_string(ObjectType self);
+
 struct Object {
     ObjectType type;
     struct Object* next;

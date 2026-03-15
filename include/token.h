@@ -66,7 +66,7 @@ typedef enum TokenType {
     TOKEN_KEYWORD_BOOL,
     TOKEN_KEYWORD_STR,
 
-    TOKEN_KEYWORD_FUNCTION,
+    TOKEN_KEYWORD_FN,
     TOKEN_KEYWORD_RETURN,
 
     TOKEN_KEYWORD_TRUE,
@@ -94,10 +94,7 @@ void token_fprintln(FILE* file, Token self);
 void token_print(Token self);
 void token_println(Token self);
 
-void token_type_fprint(FILE* file, TokenType self);
-void token_type_fprintln(FILE* file, TokenType self);
-void token_type_print(TokenType self);
-void token_type_println(TokenType self);
+char* token_type_to_string(TokenType self);
 
 TokenArray token_array_new(char* string_data, size_t string_data_length); // This takes ownership of string_data
 void token_array_push(TokenArray* self, Token token);

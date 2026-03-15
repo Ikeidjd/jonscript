@@ -1,12 +1,20 @@
-mut c: int = 30;
-let d: int = 40;
+fn add(a: int) -> fn[(int) -> int][] {
+    mut a: int = a;
 
-function add(a: int, b: int) -> int {
-    c = c - 10;
-    return a + b + c + d;
+    fn out(b: int) -> int {
+        return a + b;
+    }
+
+    fn out2(b: int) -> int {
+        a = a + 10;
+        return a;
+    }
+
+    return [out, out2];
 }
 
-println(add(10, 20));
-println(add(10, 20));
-c = 10;
-println(add(10, 20));
+let add_10: fn[(int) -> int][] = add(10);
+println(add_10[0](10));
+println(add_10[1](10));
+println(add_10[0](20));
+println(add_10[1](20));

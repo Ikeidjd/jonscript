@@ -1,0 +1,12 @@
+mut c: int = 30;
+let d: int = 40;
+
+function add(a: int, b: int) -> int {
+    c = c - 10;
+    return a + b + c + d;
+}
+
+println(add(10, 20));
+println(add(10, 20));
+c = 10;
+println(add(10, 20));

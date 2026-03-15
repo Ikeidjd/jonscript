@@ -1,0 +1,18 @@
+function new_player(health: int) -> auto {
+    mut health: int = health;
+
+    function get_health() -> int {
+        return health;
+    }
+
+    function set_health(new_health: int) {
+        health = new_health;
+    }
+
+    return get_health, set_health;
+}
+
+let get_health, set_health = new_player(20);
+println(get_health());
+set_health(40);
+println(get_health());

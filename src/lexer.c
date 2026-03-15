@@ -185,7 +185,7 @@ static bool lexer_add_keyword_token(Lexer* self, size_t start, size_t length, ch
 static void lexer_add_identifier_token(Lexer* self) {
     switch(lexer_peek_from_start(self, 0)) {
     case 'b':
-        if(lexer_add_keyword_token(self, 1, 4, "ool", TOKEN_KEYWORD_BOOL)) return;      
+        if(lexer_add_keyword_token(self, 1, 4, "ool", TOKEN_KEYWORD_BOOL)) return;
         break;
     case 'd':
         if(lexer_add_keyword_token(self, 1, 2, "o", TOKEN_KEYWORD_DO)) return;
@@ -207,8 +207,8 @@ static void lexer_add_identifier_token(Lexer* self) {
         case 'a':
             if(lexer_add_keyword_token(self, 2, 5, "lse", TOKEN_KEYWORD_FALSE)) return;
             break;
-        case 'u':
-            if(lexer_add_keyword_token(self, 2, 8, "nction", TOKEN_KEYWORD_FUNCTION)) return;
+        case 'n':
+            if(lexer_add_keyword_token(self, 2, 2, "", TOKEN_KEYWORD_FN)) return;
             break;
         }
     case 'i':

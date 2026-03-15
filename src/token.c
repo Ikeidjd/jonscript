@@ -6,9 +6,7 @@
 #include "dynamic_array.h"
 
 void token_fprint(FILE* file, Token self) {
-    fprintf(file, "Token('%.*s', ", self.text_len, self.text);
-    token_type_fprint(file, self.type);
-    fprintf(file, ")");
+    fprintf(file, "Token('%.*s', %s)", self.text_len, self.text, token_type_to_string(self.type));
 }
 
 void token_fprintln(FILE* file, Token self) {
@@ -24,163 +22,56 @@ void token_println(Token self) {
     token_fprintln(stdout, self);
 }
 
-void token_type_fprint(FILE* file, TokenType self) {
+char* token_type_to_string(TokenType self) {
     switch(self) {
-        case TOKEN_EOF:
-            fprintf(file, "TOKEN_EOF");
-            break;
-        case TOKEN_INT:
-            fprintf(file, "TOKEN_INT");
-            break;
-        case TOKEN_STR:
-            fprintf(file, "TOKEN_STR");
-            break;
-        case TOKEN_PLUS:
-            fprintf(file, "TOKEN_PLUS");
-            break;
-        case TOKEN_MINUS:
-            fprintf(file, "TOKEN_MINUS");
-            break;
-        case TOKEN_MULT:
-            fprintf(file, "TOKEN_MULT");
-            break;
-        case TOKEN_DIV:
-            fprintf(file, "TOKEN_DIV");
-            break;
-        case TOKEN_MOD:
-            fprintf(file, "TOKEN_MOD");
-            break;
-        case TOKEN_BITWISE_AND:
-            fprintf(file, "TOKEN_BITWISE_AND");
-            break;
-        case TOKEN_BITWISE_OR:
-            fprintf(file, "TOKEN_BITWISE_OR");
-            break;
-        case TOKEN_LT:
-            fprintf(file, "TOKEN_LT");
-            break;
-        case TOKEN_LE:
-            fprintf(file, "TOKEN_LE");
-            break;
-        case TOKEN_GT:
-            fprintf(file, "TOKEN_GT");
-            break;
-        case TOKEN_GE:
-            fprintf(file, "TOKEN_GE");
-            break;
-        case TOKEN_EQEQ:
-            fprintf(file, "TOKEN_EQEQ");
-            break;
-        case TOKEN_AND:
-            fprintf(file, "TOKEN_AND");
-            break;
-        case TOKEN_OR:
-            fprintf(file, "TOKEN_OR");
-            break;
-        case TOKEN_DOTDOT:
-            fprintf(file, "TOKEN_DOTDOT");
-            break;
-        case TOKEN_DOT:
-            fprintf(file, "TOKEN_DOT");
-            break;
-        case TOKEN_EQUAL:
-            fprintf(file, "TOKEN_EQUAL");
-            break;
-        case TOKEN_COMMA:
-            fprintf(file, "TOKEN_COMMA");
-            break;
-        case TOKEN_COLON:
-            fprintf(file, "TOKEN_COLON");
-            break;
-        case TOKEN_ARROW:
-            fprintf(file, "TOKEN_ARROW");
-            break;
-        case TOKEN_SEMICOLON:
-            fprintf(file, "TOKEN_SEMICOLON");
-            break;
-        case TOKEN_PAREN_LEFT:
-            fprintf(file, "TOKEN_PAREN_LEFT");
-            break;
-        case TOKEN_PAREN_RIGHT:
-            fprintf(file, "TOKEN_PAREN_RIGHT");
-            break;
-        case TOKEN_BRACKET_LEFT:
-            fprintf(file, "TOKEN_BRACKET_LEFT");
-            break;
-        case TOKEN_BRACKET_RIGHT:
-            fprintf(file, "TOKEN_BRACKET_RIGHT");
-            break;
-        case TOKEN_BRACE_LEFT:
-            fprintf(file, "TOKEN_BRACE_LEFT");
-            break;
-        case TOKEN_BRACE_RIGHT:
-            fprintf(file, "TOKEN_BRACE_RIGHT");
-            break;
-        case TOKEN_IDENTIFIER:
-            fprintf(file, "TOKEN_IDENTIFIER");
-            break;
-        case TOKEN_KEYWORD_LET:
-            fprintf(file, "TOKEN_KEYWORD_LET");
-            break;
-        case TOKEN_KEYWORD_MUT:
-            fprintf(file, "TOKEN_KEYWORD_MUT");
-            break;
-        case TOKEN_KEYWORD_PRINT:
-            fprintf(file, "TOKEN_KEYWORD_PRINT");
-            break;
-        case TOKEN_KEYWORD_PRINTLN:
-            fprintf(file, "TOKEN_KEYWORD_PRINTLN");
-            break;
-        case TOKEN_KEYWORD_IF:
-            fprintf(file, "TOKEN_KEYWORD_IF");
-            break;
-        case TOKEN_KEYWORD_ELIF:
-            fprintf(file, "TOKEN_KEYWORD_ELIF");
-            break;
-        case TOKEN_KEYWORD_ELSE:
-            fprintf(file, "TOKEN_KEYWORD_IF");
-            break;
-        case TOKEN_KEYWORD_WHILE:
-            fprintf(file, "TOKEN_KEYWORD_WHILE");
-            break;
-        case TOKEN_KEYWORD_DO:
-            fprintf(file, "TOKEN_KEYWORD_DO");
-            break;
-        case TOKEN_KEYWORD_INT:
-            fprintf(file, "TOKEN_KEYWORD_INT");
-            break;
-        case TOKEN_KEYWORD_BOOL:
-            fprintf(file, "TOKEN_KEYWORD_BOOL");
-            break;
-        case TOKEN_KEYWORD_STR:
-            fprintf(file, "TOKEN_KEYWORD_STR");
-            break;
-        case TOKEN_KEYWORD_FUNCTION:
-            fprintf(file, "TOKEN_KEYWORD_FUNCTION");
-            break;
-        case TOKEN_KEYWORD_RETURN:
-            fprintf(file, "TOKEN_KEYWORD_RETURN");
-            break;
-        case TOKEN_KEYWORD_TRUE:
-            fprintf(file, "TOKEN_KEYWORD_TRUE");
-            break;
-        case TOKEN_KEYWORD_FALSE:
-            fprintf(file, "TOKEN_KEYWORD_FALSE");
-            break;
+        case TOKEN_EOF: return "TOKEN_EOF";
+        case TOKEN_INT: return "TOKEN_INT";
+        case TOKEN_STR: return "TOKEN_STR";
+        case TOKEN_PLUS: return "TOKEN_PLUS";
+        case TOKEN_MINUS: return "TOKEN_MINUS";
+        case TOKEN_MULT: return "TOKEN_MULT";
+        case TOKEN_DIV: return "TOKEN_DIV";
+        case TOKEN_MOD: return "TOKEN_MOD";
+        case TOKEN_BITWISE_AND: return "TOKEN_BITWISE_AND";
+        case TOKEN_BITWISE_OR: return "TOKEN_BITWISE_OR";
+        case TOKEN_LT: return "TOKEN_LT";
+        case TOKEN_LE: return "TOKEN_LE";
+        case TOKEN_GT: return "TOKEN_GT";
+        case TOKEN_GE: return "TOKEN_GE";
+        case TOKEN_EQEQ: return "TOKEN_EQEQ";
+        case TOKEN_AND: return "TOKEN_AND";
+        case TOKEN_OR: return "TOKEN_OR";
+        case TOKEN_DOTDOT: return "TOKEN_DOTDOT";
+        case TOKEN_DOT: return "TOKEN_DOT";
+        case TOKEN_EQUAL: return "TOKEN_EQUAL";
+        case TOKEN_COMMA: return "TOKEN_COMMA";
+        case TOKEN_COLON: return "TOKEN_COLON";
+        case TOKEN_ARROW: return "TOKEN_ARROW";
+        case TOKEN_SEMICOLON: return "TOKEN_SEMICOLON";
+        case TOKEN_PAREN_LEFT: return "TOKEN_PAREN_LEFT";
+        case TOKEN_PAREN_RIGHT: return "TOKEN_PAREN_RIGHT";
+        case TOKEN_BRACKET_LEFT: return "TOKEN_BRACKET_LEFT";
+        case TOKEN_BRACKET_RIGHT: return "TOKEN_BRACKET_RIGHT";
+        case TOKEN_BRACE_LEFT: return "TOKEN_BRACE_LEFT";
+        case TOKEN_BRACE_RIGHT: return "TOKEN_BRACE_RIGHT";
+        case TOKEN_IDENTIFIER: return "TOKEN_IDENTIFIER";
+        case TOKEN_KEYWORD_LET: return "TOKEN_KEYWORD_LET";
+        case TOKEN_KEYWORD_MUT: return "TOKEN_KEYWORD_MUT";
+        case TOKEN_KEYWORD_PRINT: return "TOKEN_KEYWORD_PRINT";
+        case TOKEN_KEYWORD_PRINTLN: return "TOKEN_KEYWORD_PRINTLN";
+        case TOKEN_KEYWORD_IF: return "TOKEN_KEYWORD_IF";
+        case TOKEN_KEYWORD_ELIF: return "TOKEN_KEYWORD_ELIF";
+        case TOKEN_KEYWORD_ELSE: return "TOKEN_KEYWORD_IF";
+        case TOKEN_KEYWORD_WHILE: return "TOKEN_KEYWORD_WHILE";
+        case TOKEN_KEYWORD_DO: return "TOKEN_KEYWORD_DO";
+        case TOKEN_KEYWORD_INT: return "TOKEN_KEYWORD_INT";
+        case TOKEN_KEYWORD_BOOL: return "TOKEN_KEYWORD_BOOL";
+        case TOKEN_KEYWORD_STR: return "TOKEN_KEYWORD_STR";
+        case TOKEN_KEYWORD_FN: return "TOKEN_KEYWORD_FN";
+        case TOKEN_KEYWORD_RETURN: return "TOKEN_KEYWORD_RETURN";
+        case TOKEN_KEYWORD_TRUE: return "TOKEN_KEYWORD_TRUE";
+        case TOKEN_KEYWORD_FALSE: return "TOKEN_KEYWORD_FALSE";
     }
-}
-
-void token_type_fprintln(FILE* file, TokenType self) {
-    token_type_fprint(file, self);
-    fprintf(file, "\n");
-}
-
-void token_type_print(TokenType self) {
-    token_type_fprint(stdout, self);
-}
-
-void token_type_println(TokenType self) {
-    token_type_fprintln(stdout, self);
 }
 
 TokenArray token_array_new(char* string_data, size_t string_data_length) {

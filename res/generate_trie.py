@@ -13,7 +13,7 @@ keywords = [
     "else",
     "while",
     "do",
-    "function",
+    "fn",
     "return"
 ]
 

@@ -20,7 +20,7 @@ static void vm_free(VM* self) {
 #endif
     while(object != NULL) {
     #ifdef DEBUG_PRINT_FREED_OBJECTS
-        printf("Freeing object %p of type %d: ", object, object->type);
+        printf("Freeing object %p of type %s: ", object, object_type_to_string(object->type));
         object_println(object);
     #endif
         Object* next = object->next;
@@ -131,6 +131,7 @@ do { \
     while(ip < closure->chunk->code.length) {
     #ifdef DEBUG_TRACE_EXECUTION
         for(size_t i = 0; i < self->sp; i++) {
+            if(i > 0 && i == stack_frame_start_index) printf("\n");
             printf("[");
             value_print(self->stack[i]);
             printf("]");

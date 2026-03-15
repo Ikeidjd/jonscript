@@ -5,6 +5,16 @@
 #include "dynamic_array.h"
 #include "chunk.h"
 
+char* object_type_to_string(ObjectType self) {
+    switch(self) {
+        case OBJECT_STR: return "OBJECT_STR";
+        case OBJECT_ARRAY: return "OBJECT_ARRAY";
+        case OBJECT_FUNCTION: return "OBJECT_FUNCTION";
+        case OBJECT_CAPTURE: return "OBJECT_CAPTURE";
+        case OBJECT_CLOSURE: return "OBJECT_CLOSURE";
+    }
+}
+
 Object object_new(ObjectType type) {
     return (Object) {
         .type = type,

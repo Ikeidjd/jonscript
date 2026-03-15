@@ -40,10 +40,7 @@ typedef struct {
     PrimitiveType type;
 } PrimitiveTypeObj;
 
-void primitive_type_fprint(FILE* file, PrimitiveType self);
-void primitive_type_fprintln(FILE* file, PrimitiveType self);
-void primitive_type_print(PrimitiveType self);
-void primitive_type_println(PrimitiveType self);
+char* primitive_type_to_string(PrimitiveType self);
 
 typedef struct ArrayType {
     Type base;
