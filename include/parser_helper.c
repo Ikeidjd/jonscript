@@ -66,10 +66,10 @@ static void parser_error_too_many_params(Parser* self, Token function_name) {
         function_name.text_len, function_name.text, function_name.line, function_name.pos, MAX_PARAM_LENGTH);
 }
 
-static void parser_error_too_many_params_for_type(Parser* self, Token keyword_fn) {
+static void parser_error_too_many_params_for_type(Parser* self, Token pos) {
     parser_signal_error(self);
 
-    fprintf(stderr, "Too many parameters for function type on line %d, pos %d. Maximum is %d\n", keyword_fn.line, keyword_fn.pos, MAX_PARAM_LENGTH);
+    fprintf(stderr, "Too many parameters for function type on line %d, pos %d. Maximum is %d\n", pos.line, pos.pos, MAX_PARAM_LENGTH);
 }
 
 static void parser_error_too_many_args(Parser* self, Token paren_left) {

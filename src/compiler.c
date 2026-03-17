@@ -121,6 +121,7 @@ static void comp_bin_op(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeBinO
             fprintf(stderr, "Invalid binary operator ");
             token_fprint(stderr, node->op);
             fprintf(stderr, ". This should never happen.\n");
+            exit(-1);
             break;
     }
 }
@@ -142,6 +143,12 @@ static void comp_index_op(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIn
     code_emit(&chunk->code, node->should_set ? OP_INDEX_SET : OP_INDEX_GET);
 }
 
+static void comp_member_access_op(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndexOp* node) {
+    COMP(node->left);
+    COMP(node->right);
+    code_emit(&chunk->code, node->should_set ? OP_TUPLE_MEMBER_SET : OP_TUPLE_MEMBER_GET);
+}
+
 static void comp_fun_call(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeFunCall* node) {
     COMP(node->func_expr);
     for(size_t i = 0; i < node->args_length; i++) COMP(node->args[i]);
@@ -152,6 +159,7 @@ static void comp_var(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeVar* no
     Opcode get = node->captured ? OP_CAPTURE_GET : OP_LOCAL_GET;
     Opcode set = node->captured ? OP_CAPTURE_SET : OP_LOCAL_SET;
     code_emit_args(&chunk->code, node->should_set ? set : get, 2, TO_LE_2_BYTES(node->stack_index));
+    if(node->should_deep_copy) code_emit(&chunk->code, OP_DEEP_COPY);
 }
 
 static void comp_array_list_init(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeArrayListInit* node) {
@@ -163,6 +171,11 @@ static void comp_array_length_init(Compiler* self, Chunk* chunk, NodeArray* node
     COMP(node->expr);
     COMP(node->length);
     code_emit(&chunk->code, OP_ARRAYIFY_LENGTH);
+}
+
+static void comp_tuple(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeTuple* node) {
+    for(size_t i = 0; i < node->length; i++) COMP(node->data[i]);
+    code_emit_args(&chunk->code, OP_TUPLIFY, 2, TO_LE_2_BYTES(node->length));
 }
 
 static void comp_int(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeLiteral* node) {
@@ -223,6 +236,9 @@ static void comp(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndex node_
         case NODE_INDEX_OP:
             comp_index_op(self, chunk, nodes, &node->as.index_op);
             break;
+        case NODE_MEMBER_ACCESS_OP:
+            comp_member_access_op(self, chunk, nodes, &node->as.index_op);
+            break;
         case NODE_FUN_CALL:
             comp_fun_call(self, chunk, nodes, &node->as.fun_call);
             break;
@@ -234,6 +250,9 @@ static void comp(Compiler* self, Chunk* chunk, NodeArray* nodes, NodeIndex node_
             break;
         case NODE_ARRAY_LENGTH_INIT:
             comp_array_length_init(self, chunk, nodes, &node->as.array_length_init);
+            break;
+        case NODE_TUPLE:
+            comp_tuple(self, chunk, nodes, &node->as.tuple);
             break;
         case NODE_INT:
             comp_int(self, chunk, nodes, &node->as.literal);

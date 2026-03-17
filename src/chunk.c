@@ -21,7 +21,7 @@ void chunk_destruct(Chunk self) {
         Object* object = self.constants.data[i].as.object;
     #ifdef DEBUG_PRINT_FREED_OBJECTS
         printf("Freeing object %p of type %s: ", object, object_type_to_string(object->type));
-        object_println(object);
+        object_println(object, NULL);
     #endif
         Object* next = object->next;
         object_free(object);
@@ -76,8 +76,11 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_LOAD_FALSE:
         case OP_INDEX_GET:
         case OP_INDEX_SET:
+        case OP_TUPLE_MEMBER_GET:
+        case OP_TUPLE_MEMBER_SET:
         case OP_POP:
         case OP_ARRAYIFY_LENGTH:
+        case OP_DEEP_COPY:
         case OP_ADD:
         case OP_SUB:
         case OP_MUL:
@@ -107,6 +110,7 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
         case OP_CAPTURE_SET:
         case OP_POP_N:
         case OP_ARRAYIFY_LIST:
+        case OP_TUPLIFY:
         case OP_JUMP:
         case OP_JUMP_IF_TRUE:
         case OP_JUMP_IF_FALSE:
@@ -118,9 +122,9 @@ size_t chunk_disassemble_op(Chunk* self, size_t offset) {
 
 void chunk_disassemble(Chunk* self) {
     for(size_t i = 0; i < self->constants.length; i++) {
-        printf("[");
-        value_print(self->constants.data[i]);
-        printf("]");
+        TempString str = value_to_repr(self->constants.data[i], NULL);
+        printf("[%.*s]", str.length, str.data);
+        temp_string_destruct(str);
     }
     if(self->constants.length == 0) printf("[]");
     printf("\n");
@@ -131,7 +135,7 @@ void chunk_disassemble(Chunk* self) {
     for(size_t i = 0; i < self->constants.length; i++) {
         if(self->constants.data[i].type == VALUE_OBJECT && self->constants.data[i].as.object->type == OBJECT_FUNCTION) {
             printf("\n");
-            object_println(self->constants.data[i].as.object);
+            object_println(self->constants.data[i].as.object, NULL);
             ObjectFunction* function = AS_FUNCTION(self->constants.data[i]);
             chunk_disassemble(function->chunk);
         }

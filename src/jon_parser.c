@@ -106,6 +106,25 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             break;
         case TOKEN_PAREN_LEFT:
             node = PROPAGATE_ERROR(parse_expr(self));
+
+            if(parser_peek_matches(self, TOKEN_COMMA)) {
+                NodeIndex old_node = node;
+
+                node = node_array_push(&self->nodes, NODE_TUPLE);
+                GET(node).as.tuple.data = malloc(MAX_PARAM_LENGTH * sizeof(NodeIndex));
+                GET(node).as.tuple.data[0] = old_node;
+                GET(node).as.tuple.length = 1;
+
+                while(parser_matches(self, TOKEN_COMMA)) {
+                    if(GET(node).as.tuple.length == MAX_PARAM_LENGTH) {
+                        parser_error_too_many_params_for_type(self, token);
+                        return 0;
+                    }
+
+                    GET(node).as.tuple.data[GET(node).as.tuple.length++] = PROPAGATE_ERROR(parse_expr(self));
+                }
+            }
+
             PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_RIGHT, "')'"));
             break;
         case TOKEN_BRACKET_LEFT:
@@ -144,6 +163,7 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             GET(node).as.var.name = token;
             GET(node).as.var.should_set = false;
             GET(node).as.var.captured = false;
+            GET(node).as.var.should_deep_copy = false;
             break;
         case TOKEN_KEYWORD_TRUE:
         case TOKEN_KEYWORD_FALSE:
@@ -162,7 +182,7 @@ static NodeIndex parse_prefix_expr(Parser* self) {
             case TOKEN_BRACKET_LEFT:
                 node = node_array_push(&self->nodes, NODE_INDEX_OP);
 
-                GET(node).as.index_op.bracket_left = parser_advance(self);
+                GET(node).as.index_op.op = parser_advance(self);
                 GET(node).as.index_op.left = node_prev;
                 GET(node).as.index_op.right = PROPAGATE_ERROR(parse_expr(self));
 
@@ -209,6 +229,15 @@ static NodeIndex parse_precedence(Parser* self, Precedence prev_prec) {
         GET(node_next).as.bin_op.right = PROPAGATE_ERROR(parse_precedence(self, cur_prec));
 
         if(GET(node_next).as.bin_op.op.type == TOKEN_AND || GET(node_next).as.bin_op.op.type == TOKEN_OR) GET(node_next).type = NODE_LOGICAL_OP;
+        else if(GET(node_next).as.bin_op.op.type == TOKEN_DOT) {
+            GET(node_next).type = NODE_MEMBER_ACCESS_OP;
+            GET(node_next).as.index_op = (NodeIndexOp) {
+                .op = GET(node_next).as.bin_op.op,
+                .left = GET(node_next).as.bin_op.left,
+                .right = GET(node_next).as.bin_op.right,
+                .should_set = false
+            };
+        }
 
         node = node_next;
         cur_prec = parser_get_cur_prec(self);
@@ -268,6 +297,31 @@ static Type* parse_type(Parser* self) {
             PROPAGATE_ERROR(parser_consume(self, TOKEN_BRACKET_RIGHT, "']'"));
 
             type = (Type*) function_type_new(&self->nodes.type_hash_set, param_types, params_length, return_type);
+            break;
+        }
+        case TOKEN_PAREN_LEFT: {
+            Token paren_left = parser_prev(self);
+
+            size_t types_length = 0;
+            Type* types[MAX_PARAM_LENGTH];
+
+            for(; !parser_peek_matches(self, TOKEN_PAREN_RIGHT); types_length++) {
+                if(types_length == MAX_PARAM_LENGTH) {
+                    parser_error_too_many_params_for_type(self, paren_left);
+                    return 0;
+                }
+
+                types[types_length] = PROPAGATE_ERROR(parse_type(self));
+
+                if(!parser_matches(self, TOKEN_COMMA)) {
+                    types_length++;
+                    break;
+                }
+            }
+
+            PROPAGATE_ERROR(parser_consume(self, TOKEN_PAREN_RIGHT, "')'"));
+
+            type = (Type*) tuple_type_new(&self->nodes.type_hash_set, types, types_length);
             break;
         }
         default:

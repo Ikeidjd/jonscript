@@ -19,6 +19,8 @@ typedef enum Opcode {
     OP_CAPTURE_SET,
     OP_INDEX_GET,
     OP_INDEX_SET,
+    OP_TUPLE_MEMBER_GET,
+    OP_TUPLE_MEMBER_SET,
 
     OP_CALL,
 
@@ -27,6 +29,10 @@ typedef enum Opcode {
 
     OP_ARRAYIFY_LIST,
     OP_ARRAYIFY_LENGTH,
+
+    OP_TUPLIFY,
+
+    OP_DEEP_COPY,
 
     OP_ADD,
     OP_SUB,

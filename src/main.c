@@ -46,9 +46,9 @@ End1:
     printf("String literals: ");
     for(size_t i = 0; i < str_pool.size; i++) {
         if(str_pool.data[i] != NULL) {
-            printf("[");
-            object_print((Object*) str_pool.data[i]);
-            printf("]");
+            TempString str = object_to_repr((Object*) str_pool.data[i], NULL);
+            printf("[%.*s]", str.length, str.data);
+            temp_string_destruct(str);
         }
     }
     printf("\n\n");

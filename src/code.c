@@ -17,11 +17,15 @@ char* opcode_to_string(Opcode self) {
         case OP_CAPTURE_SET: return "OP_CAPTURE_SET";
         case OP_INDEX_GET: return "OP_INDEX_GET";
         case OP_INDEX_SET: return "OP_INDEX_SET";
+        case OP_TUPLE_MEMBER_GET: return "OP_TUPLE_MEMBER_GET";
+        case OP_TUPLE_MEMBER_SET: return "OP_TUPLE_MEMBER_SET";
         case OP_CALL: return "OP_CALL";
         case OP_POP: return "OP_POP";
         case OP_POP_N: return "OP_POP_N";
         case OP_ARRAYIFY_LIST: return "OP_ARRAYIFY_LIST";
         case OP_ARRAYIFY_LENGTH: return "OP_ARRAYIFY_LENGTH";
+        case OP_TUPLIFY: return "OP_TUPLIFY";
+        case OP_DEEP_COPY: return "OP_DEEP_COPY";
         case OP_ADD: return "OP_ADD";
         case OP_SUB: return "OP_SUB";
         case OP_MUL: return "OP_MUL";

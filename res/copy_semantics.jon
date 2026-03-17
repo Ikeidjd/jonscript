@@ -1,0 +1,18 @@
+let x: (int, str, bool) = (0, "0", false);
+mut y: (int, str, bool) = x;
+y.0 = 1;
+
+mut a: int[][] = [[0:3]:3];
+mut b: int[][] = a;
+let c: int[] = [2:2];
+
+a[0] = c;
+a[0][0] = 0;
+a[1][1] = 1;
+a[2][2] = 2;
+
+b[1] = c;
+b[0][0] = 1;
+
+mut d: int[][] = [c, c];
+d[0][0] = 1;

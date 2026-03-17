@@ -71,7 +71,7 @@ typedef struct NodeBinOp {
 } NodeBinOp;
 
 typedef struct NodeIndexOp {
-    Token bracket_left;
+    Token op;
     NodeIndex left;
     NodeIndex right;
     bool should_set;
@@ -89,6 +89,7 @@ typedef struct NodeVar {
     size_t stack_index;
     bool should_set;
     bool captured;
+    bool should_deep_copy;
 } NodeVar;
 
 typedef struct NodeArrayListInit {
@@ -103,6 +104,11 @@ typedef struct NodeArrayLengthInit {
     NodeIndex expr;
     NodeIndex length;
 } NodeArrayLengthInit;
+
+typedef struct NodeTuple {
+    NodeIndex* data;
+    NodeIndex length;
+} NodeTuple;
 
 typedef struct NodeLiteral {
     Token value;
@@ -122,12 +128,14 @@ typedef enum NodeType {
 
     NODE_BIN_OP,
     NODE_LOGICAL_OP,
+    NODE_MEMBER_ACCESS_OP,
     NODE_INDEX_OP,
     NODE_FUN_CALL,
 
     NODE_VAR,
     NODE_ARRAY_LIST_INIT,
     NODE_ARRAY_LENGTH_INIT,
+    NODE_TUPLE,
     NODE_INT,
     NODE_BOOL,
     NODE_STR
@@ -154,6 +162,7 @@ typedef struct Node {
         NodeVar var;
         NodeArrayListInit array_list_init;
         NodeArrayLengthInit array_length_init;
+        NodeTuple tuple;
         NodeLiteral literal;
     } as;
 } Node;

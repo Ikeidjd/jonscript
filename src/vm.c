@@ -3,15 +3,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "stack.h"
-
-typedef struct VM {
-    StrPool str_pool;
-    Object* object;
-    size_t sp;
-    Value stack[STACK_SIZE];
-} VM;
-
 static void vm_free(VM* self) {
     Object* object = self->object;
 
@@ -21,7 +12,7 @@ static void vm_free(VM* self) {
     while(object != NULL) {
     #ifdef DEBUG_PRINT_FREED_OBJECTS
         printf("Freeing object %p of type %s: ", object, object_type_to_string(object->type));
-        object_println(object);
+        object_println(object, NULL);
     #endif
         Object* next = object->next;
         object_free(object);
@@ -34,20 +25,31 @@ static void vm_free(VM* self) {
     free(self);
 }
 
-static void vm_push(VM* self, Value value) {
+void vm_push(VM* self, Value value) {
     self->stack[self->sp++] = value;
-}
-
-static Value vm_pop(VM* self) {
-    return self->stack[--self->sp];
 }
 
 static void vm_pop_n(VM* self, size_t n) {
     self->sp -= n;
 }
 
+static Value vm_pop(VM* self) {
+    Value value = self->stack[--self->sp];
+    if(value.type == VALUE_TUPLE) {
+        ValueTuple tuple = value.as.tuple;
+        // If this is the original tuple (i.e., we're dealing with an rvalue)
+        if(tuple.value_stack_index == self->sp - tuple.length) vm_pop_n(self, tuple.length);
+    }
+    return value;
+}
+
 static Value vm_top(VM* self) {
     return self->stack[self->sp - 1];
+}
+
+void vm_object_non_str_register(VM* self, Object* object) {
+    object->next = self->object;
+    self->object = object;
 }
 
 static ObjectStr* vm_object_str_register(VM* self, ObjectStr* str) {
@@ -55,22 +57,16 @@ static ObjectStr* vm_object_str_register(VM* self, ObjectStr* str) {
     str = str_pool_insert(&self->str_pool, str);
 
     // If string wasn't found, i.e., it's not a duplicate
-    if(str == old_str) {
-        str->base.next = self->object;
-        self->object = (Object*) str;
-    }
+    if(str == old_str) vm_object_non_str_register(self, (Object*) str);
 
     return str;
 }
 
-static ObjectArray* vm_object_array_malloc(VM* self, size_t element_count) {
-    ObjectArray* out = malloc(sizeof(ObjectArray));
-    *out = object_array_of_length(element_count);
-
-    out->base.next = self->object;
-    self->object = (Object*) out;
-
-    return out;
+ObjectArray* vm_object_array_malloc(VM* self, size_t element_count) {
+    ObjectArray* array = malloc(sizeof(ObjectArray));
+    *array = object_array_of_length(element_count);
+    vm_object_non_str_register(self, (Object*) array);
+    return array;
 }
 
 static ObjectCapture* vm_capture(VM* self, size_t index) {
@@ -80,24 +76,20 @@ static ObjectCapture* vm_capture(VM* self, size_t index) {
     *capture = object_capture_new(self->stack[index]);
     self->stack[index] = value_new_object((Object*) capture);
 
-    capture->base.next = self->object;
-    self->object = (Object*) capture;
-
+    vm_object_non_str_register(self, (Object*) capture);
     return capture;
 }
 
 static ObjectClosure* vm_object_closure_malloc(VM* self, ObjectFunction* function) {
-    ObjectClosure* out = malloc(sizeof(ObjectClosure));
-    *out = object_closure_new(function);
+    ObjectClosure* closure = malloc(sizeof(ObjectClosure));
+    *closure = object_closure_new(function);
 
     for(size_t i = 0; i < function->captured_locals_length; i++) {
-        out->captured_locals[i] = vm_capture(self, self->sp - function->captured_locals[i]);
+        closure->captured_locals[i] = vm_capture(self, self->sp - function->captured_locals[i]);
     }
 
-    out->base.next = self->object;
-    self->object = (Object*) out;
-
-    return out;
+    vm_object_non_str_register(self, (Object*) closure);
+    return closure;
 }
 
 static void vm_run(VM* self, ObjectClosure* closure, size_t stack_frame_start_index) {
@@ -132,9 +124,9 @@ do { \
     #ifdef DEBUG_TRACE_EXECUTION
         for(size_t i = 0; i < self->sp; i++) {
             if(i > 0 && i == stack_frame_start_index) printf("\n");
-            printf("[");
-            value_print(self->stack[i]);
-            printf("]");
+            TempString str = value_to_repr(self->stack[i], self->stack);
+            printf("[%.*s]", str.length, str.data);
+            temp_string_destruct(str);
         }
 
         if(self->sp == 0) printf("[]");
@@ -199,17 +191,31 @@ do { \
                 break;
             }
             case OP_INDEX_GET: {
-                size_t index = vm_pop(self).as.integer;
+                int64_t index = vm_pop(self).as.integer;
                 ObjectArray* array = AS_ARRAY(vm_pop(self));
                 vm_push(self, array->data[index]);
                 break;
             }
             case OP_INDEX_SET: {
                 // Yeah, the order of arguments is a little weird, but it was easier to compile that way
-                size_t index = vm_pop(self).as.integer;
+                int64_t index = vm_pop(self).as.integer;
                 ObjectArray* array = AS_ARRAY(vm_pop(self));
                 Value value = vm_pop(self);
                 array->data[index] = value;
+                break;
+            }
+            case OP_TUPLE_MEMBER_GET: {
+                int64_t index = vm_pop(self).as.integer;
+                ValueTuple tuple = vm_pop(self).as.tuple;
+                vm_push(self, self->stack[tuple.value_stack_index + index]);
+                break;
+            }
+            case OP_TUPLE_MEMBER_SET: {
+                // Yeah, the order of arguments is a little weird, but it was easier to compile that way
+                int64_t index = vm_pop(self).as.integer;
+                ValueTuple tuple = vm_pop(self).as.tuple;
+                Value value = vm_pop(self);
+                self->stack[tuple.value_stack_index + index] = value;
                 break;
             }
             case OP_CALL: {
@@ -240,8 +246,21 @@ do { \
                 size_t length = vm_pop(self).as.integer;
                 ObjectArray* array = vm_object_array_malloc(self, length);
                 Value value = vm_pop(self);
-                for(size_t i = 0; i < length; i++) array->data[i] = value;
+                for(size_t i = 0; i < length; i++) array->data[i] = value_deep_copy(value, self);
                 vm_push(self, value_new_object((Object*) array));
+                break;
+            }
+            case OP_TUPLIFY: {
+                size_t length = READ();
+                length |= (READ() << 8);
+                vm_push(self, value_new_tuple((ValueTuple) {
+                    .value_stack_index = self->sp - length,
+                    .length = length
+                }));
+                break;
+            }
+            case OP_DEEP_COPY: {
+                vm_push(self, value_deep_copy(vm_pop(self), self));
                 break;
             }
             case OP_ADD:
@@ -281,39 +300,32 @@ do { \
                 Value b = vm_pop(self);
                 Value a = vm_pop(self);
 
-                size_t a_length;
-                bool a_should_free;
-                char* a_str = value_to_string(a, &a_length, &a_should_free);
+                TempString a_str = value_to_str(a, self->stack);
+                TempString b_str = value_to_str(b, self->stack);
 
-                size_t b_length;
-                bool b_should_free;
-                char* b_str = value_to_string(b, &b_length, &b_should_free);
-
-                char* data = malloc(a_length + b_length);
-                for(size_t i = 0; i < a_length; i++) data[i] = a_str[i];
-                for(size_t i = 0; i < b_length; i++) data[i + a_length] = b_str[i];
-
-                if(a_should_free) free(a_str);
-                if(b_should_free) free(b_str);
+                char* data = malloc(a_str.length + b_str.length);
+                for(size_t i = 0; i < a_str.length; i++) data[i] = a_str.data[i];
+                for(size_t i = 0; i < b_str.length; i++) data[i + a_str.length] = b_str.data[i];
 
                 ObjectStr* result = malloc(sizeof(ObjectStr));
-                *result = object_str_new(data, a_length + b_length);
+                *result = object_str_new(data, a_str.length + b_str.length);
                 result = vm_object_str_register(self, result);
-
                 vm_push(self, value_new_object((Object*) result));
 
+                temp_string_destruct(a_str);
+                temp_string_destruct(b_str);
                 break;
             }
             case OP_PRINT:
-                value_print(vm_pop(self));
+                value_print(vm_pop(self), self->stack);
                 break;
             case OP_PRINTLN:
-                value_println(vm_pop(self));
+                value_println(vm_pop(self), self->stack);
                 break;
             case OP_EQUALS: {
                 Value b = vm_pop(self);
                 Value a = vm_pop(self);
-                bool result = value_equals(a, b);
+                bool result = value_equals(a, b, self->stack);
                 vm_push(self, value_new_bool(result));
                 break;
             }

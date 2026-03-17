@@ -47,6 +47,18 @@ static bool type_equals(Type* left, Type* right) {
             return ((PrimitiveTypeObj*) left)->type == ((PrimitiveTypeObj*) right)->type;
         case TTYPE_ARRAY:
             return ((ArrayType*) left)->type == ((ArrayType*) right)->type;
+        case TTYPE_TUPLE: {
+            TupleType* a = (TupleType*) left;
+            TupleType* b = (TupleType*) right;
+
+            if(a->types_length != b->types_length) return false;
+
+            for(size_t i = 0; i < a->types_length; i++) {
+                if(a->types[i] != b->types[i]) return false;
+            }
+
+            return true;
+        }
         case TTYPE_FUNCTION: {
             FunctionType* a = (FunctionType*) left;
             FunctionType* b = (FunctionType*) right;
@@ -109,13 +121,32 @@ ArrayType* array_type_new(TypeHashSet* set, Type* type) {
     return (ArrayType*) type_hash_set_insert(set, (Type*) self, sizeof(ArrayType));
 }
 
+TupleType* tuple_type_new(TypeHashSet* set, Type* types[MAX_PARAM_LENGTH], size_t types_length) {
+    TupleType* self = (TupleType*) type_arena_alloc(set->arena, sizeof(TupleType));
+
+    *self = (TupleType) {
+        .base = {
+            .type = TTYPE_TUPLE,
+            .hash = 0
+        },
+        .types_length = types_length
+    };
+
+    for(size_t i = 0; i < types_length; i++) {
+        self->types[i] = types[i];
+        self->base.hash ^= (uint64_t) types[i];
+    }
+
+    return (TupleType*) type_hash_set_insert(set, (Type*) self, sizeof(TupleType));
+}
+
 FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LENGTH], size_t params_length, Type* return_type) {
     FunctionType* self = (FunctionType*) type_arena_alloc(set->arena, sizeof(FunctionType));
 
     *self = (FunctionType) {
         .base = {
             .type = TTYPE_FUNCTION,
-            .hash = 0
+            .hash = (uint64_t) return_type
         },
         .params_length = params_length,
         .return_type = return_type
@@ -144,12 +175,20 @@ bool is_void(Type* self) {
     return self->type == TTYPE_VOID;
 }
 
+bool is_any_primitive(Type* self) {
+    return self->type == TTYPE_PRIMITIVE;
+}
+
 bool is_primitive(Type* self, PrimitiveType type) {
-    return self->type == TTYPE_PRIMITIVE && ((PrimitiveTypeObj*) self)->type == type;
+    return is_any_primitive(self) && ((PrimitiveTypeObj*) self)->type == type;
 }
 
 bool is_array(Type* self) {
     return self->type == TTYPE_ARRAY;
+}
+
+bool is_tuple(Type* self) {
+    return self->type == TTYPE_TUPLE;
 }
 
 bool is_function(Type* self) {

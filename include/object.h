@@ -22,14 +22,18 @@ struct Object {
 Object object_new(ObjectType type);
 void object_free(Object* object);
 
-bool object_equals(Object* a, Object* b);
+bool object_equals(Object* a, Object* b, Value stack[]);
 
-char* object_to_string(Object* self, size_t* length, bool* should_free);
+typedef struct VM VM;
+Object* object_deep_copy(Object* self, VM* vm);
 
-void object_fprint(FILE* file, Object* self);
-void object_fprintln(FILE* file, Object* self);
-void object_print(Object* self);
-void object_println(Object* self);
+TempString object_to_str(Object* self, Value stack[]);
+TempString object_to_repr(Object* self, Value stack[]);
+
+void object_fprint(FILE* file, Object* self, Value stack[]);
+void object_fprintln(FILE* file, Object* self, Value stack[]);
+void object_print(Object* self, Value stack[]);
+void object_println(Object* self, Value stack[]);
 
 typedef struct ObjectStr {
     Object base;

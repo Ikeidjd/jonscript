@@ -1,9 +1,11 @@
 #include "object.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "dynamic_array.h"
 #include "chunk.h"
+#include "vm.h"
 
 char* object_type_to_string(ObjectType self) {
     switch(self) {
@@ -42,7 +44,7 @@ void object_free(Object* self) {
     }
 }
 
-bool object_equals(Object* left, Object* right) {
+bool object_equals(Object* left, Object* right, Value stack[]) {
     if(left->type != right->type) {
         fprintf(stderr, "Types of object don't match on equality. This should never happen.\n");
         exit(-1);
@@ -56,7 +58,7 @@ bool object_equals(Object* left, Object* right) {
             ObjectArray* b = (ObjectArray*) right;
 
             if(a->length != b->length) return false;
-            for(size_t i = 0; i < a->length; i++) if(!value_equals(a->data[i], b->data[i])) return false;
+            for(size_t i = 0; i < a->length; i++) if(!value_equals(a->data[i], b->data[i], stack)) return false;
 
             return true;
         }
@@ -66,119 +68,156 @@ bool object_equals(Object* left, Object* right) {
         case OBJECT_CAPTURE:
             fprintf(stderr, "Attempt to perform equality on capture. This should never happen.\n");
             exit(-1);
+            break;
     }
 }
 
-char* object_to_string(Object* self, size_t* length, bool* should_free) {
+Object* object_deep_copy(Object* self, VM* vm) {
+    switch(self->type) {
+        case OBJECT_STR:
+        case OBJECT_FUNCTION:
+        case OBJECT_CLOSURE:
+            return self;
+        case OBJECT_ARRAY: {
+            ObjectArray* array = (ObjectArray*) self;
+            ObjectArray* out = vm_object_array_malloc(vm, array->length);
+            for(size_t i = 0; i < array->length; i++) out->data[i] = value_deep_copy(array->data[i], vm);
+            return (Object*) out;
+        }
+        case OBJECT_CAPTURE:
+            fprintf(stderr, "This should have already been handled by value_deep_copy. This should never happen.\n");
+            exit(-1);
+            break;
+    }
+}
+
+static TempString fill_in_with_char_ptr(const char* format, char* str, size_t str_length) {
+    size_t format_length = strlen(format);
+    size_t length = str_length + format_length;
+
+    TempString out = (TempString) {
+        .data = malloc(length),
+        .length = length,
+        .should_free = true
+    };
+
+    size_t position = 0;
+    for(; format[position] != '%'; position++) out.data[position] = format[position];
+    for(size_t i = 0; i < str_length; i++) out.data[position + i] = str[i];
+    for(size_t i = position + 1; i < format_length; i++) out.data[str_length + i] = format[i];
+
+    return out;
+}
+
+// Destructs str, so be careful
+static TempString fill_in_with_temp_string(const char* format, TempString str) {
+    TempString out = fill_in_with_char_ptr(format, str.data, str.length);
+    temp_string_destruct(str);
+    return out;
+}
+
+static TempString fill_in_with_object_str(const char* format, ObjectStr* str) {
+    return fill_in_with_char_ptr(format, str->data, str->length);
+}
+
+static TempString fill_in_with_address(const char* format, void* address) {
+    size_t length = sizeof("00000000");
+    char str[length--];
+    sprintf(str, "%p", address);
+    return fill_in_with_char_ptr(format, str, length);
+}
+
+TempString object_to_str(Object* self, Value stack[]) {
     switch(self->type) {
         case OBJECT_STR: {
             ObjectStr* str = (ObjectStr*) self;
-            *length = str->length;
-            *should_free = false;
-            return str->data;
+            return (TempString) {
+                .data = str->data,
+                .length = str->length,
+                .should_free = false
+            };
         }
         case OBJECT_ARRAY: {
             ObjectArray* array = (ObjectArray*) self;
 
             if(array->length == 0) {
-                *length = 2;
-                *should_free = false;
-                return "[]";
+                return (TempString) {
+                    .data = "[]",
+                    .length = 2,
+                    .should_free = false
+                };
             }
 
-            char* elements_as_strings[array->length];
-            size_t lengths[array->length];
-            bool should_frees[array->length];
+            TempString* elements = malloc(array->length * sizeof(TempString));
 
-            *length = 0;
+            size_t length = 0;
             for(size_t i = 0; i < array->length; i++) {
-                elements_as_strings[i] = value_to_string(array->data[i], &lengths[i], &should_frees[i]);
-                *length += lengths[i] + 2; // + 2 because of the ", " between elements. No need to subtract on the last element because the extra + 2 accounts for the "[" and "]".
+                elements[i] = value_to_repr(array->data[i], stack);
+                length += elements[i].length + 2; // + 2 because of the ", " between elements. No need to subtract on the last element because the extra + 2 accounts for the "[" and "]".
             }
 
-            char* out = malloc(*length);
-            size_t out_i = 0;
+            TempString str = (TempString) {
+                .data = malloc(length),
+                .length = length,
+                .should_free = true
+            };
 
-            out[out_i++] = '[';
+            size_t index = 0;
+            str.data[index++] = '[';
 
             for(size_t i = 0; i < array->length; i++) {
-                for(size_t j = 0; j < lengths[i]; j++) out[out_i++] = elements_as_strings[i][j];
-
-                if(should_frees[i]) free(elements_as_strings[i]);
+                for(size_t j = 0; j < elements[i].length; j++) str.data[index++] = elements[i].data[j];
+                temp_string_destruct(elements[i]);
 
                 if(i < array->length - 1) {
-                    out[out_i++] = ',';
-                    out[out_i++] = ' ';
+                    str.data[index++] = ',';
+                    str.data[index++] = ' ';
                 }
             }
 
-            out[out_i] = ']';
+            str.data[index] = ']';
+            free(elements);
 
-            *should_free = true;
-            return out;
-        }
-        case OBJECT_FUNCTION: {
-            *length = sizeof("<fn 00000000>");
-            *should_free = true;
-            char* out = malloc(*length);
-            sprintf(out, "<fn %p>", self);
-            return out;
-        }
-        case OBJECT_CLOSURE: {
-            *length = sizeof("<cl 00000000>");
-            *should_free = true;
-            char* out = malloc(*length);
-            sprintf(out, "<cl %p>", self);
-            return out;
-        }
-        case OBJECT_CAPTURE:
-            fprintf(stderr, "Attempt to stringify capture. This should never happen.\n");
-            exit(-1);
-    }
-}
-
-void object_fprint(FILE* file, Object* self) {
-    switch(self->type) {
-        case OBJECT_STR: {
-            ObjectStr* str = (ObjectStr*) self;
-            fprintf(file, "%.*s", str->length, str->data);
-            break;
-        }
-        case OBJECT_ARRAY: {
-            ObjectArray* array = (ObjectArray*) self;
-            fprintf(file, "[");
-            for(size_t i = 0; i < array->length; i++) {
-                value_fprint(file, array->data[i]);
-                if(i + 1 < array->length) fprintf(file, ", ");
-            }
-            fprintf(file, "]");
-            break;
+            return str;
         }
         case OBJECT_FUNCTION:
-            fprintf(file, "<fn %p>", self);
-            break;
+            return fill_in_with_address("<fn %>", self);
         case OBJECT_CLOSURE:
-            fprintf(file, "<cl %p>", self);
-            break;
+            return fill_in_with_address("<cl %>", self);
         case OBJECT_CAPTURE:
-            fprintf(file, "<capture: ");
-            value_fprint(file, ((ObjectCapture*) self)->captured_value);
-            fprintf(file, ">");
-            break;
+            return fill_in_with_temp_string("<capture: %>", value_to_str(((ObjectCapture*) self)->captured_value, stack));
     }
 }
 
-void object_fprintln(FILE* file, Object* self) {
-    object_fprint(file, self);
+TempString object_to_repr(Object* self, Value stack[]) {
+    switch(self->type) {
+        case OBJECT_ARRAY:
+        case OBJECT_FUNCTION:
+        case OBJECT_CLOSURE:
+        case OBJECT_CAPTURE:
+            return object_to_str(self, stack);
+        case OBJECT_STR:
+            return fill_in_with_object_str("\"%\"", (ObjectStr*) self);
+    }
+}
+
+void object_fprint(FILE* file, Object* self, Value stack[]) {
+    TempString str = object_to_str(self, stack);
+    fprintf(file, "%.*s", str.length, str.data);
+    temp_string_destruct(str);
+}
+
+void object_fprintln(FILE* file, Object* self, Value stack[]) {
+    object_fprint(file, self, stack);
     fprintf(file, "\n");
 }
 
-void object_print(Object* self) {
-    object_fprint(stdout, self);
+void object_print(Object* self, Value stack[]) {
+    object_fprint(stdout, self, stack);
 }
 
-void object_println(Object* self) {
-    object_fprintln(stdout, self);
+void object_println(Object* self, Value stack[]) {
+    object_fprintln(stdout, self, stack);
 }
 
 // https://stackoverflow.com/questions/7666509/hash-function-for-string

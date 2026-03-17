@@ -13,6 +13,7 @@ typedef unsigned char byte;
 typedef enum TypeType {
     TTYPE_PRIMITIVE,
     TTYPE_ARRAY,
+    TTYPE_TUPLE,
     TTYPE_FUNCTION,
     TTYPE_VOID,
     // TTYPE_DICT,
@@ -52,6 +53,17 @@ void array_type_fprintln(FILE* file, ArrayType* self);
 void array_type_print(ArrayType* self);
 void array_type_println(ArrayType* self);
 
+typedef struct TupleType {
+    Type base;
+    Type* types[MAX_PARAM_LENGTH];
+    size_t types_length;
+} TupleType;
+
+void tuple_type_fprint(FILE* file, TupleType* self);
+void tuple_type_fprintln(FILE* file, TupleType* self);
+void tuple_type_print(TupleType* self);
+void tuple_type_println(TupleType* self);
+
 typedef struct FunctionType {
     Type base;
     Type* param_types[MAX_PARAM_LENGTH];
@@ -90,10 +102,13 @@ void type_hash_set_destruct(TypeHashSet self);
 
 PrimitiveTypeObj* primitive_type_new(TypeHashSet* set, PrimitiveType type);
 ArrayType* array_type_new(TypeHashSet* set, Type* type);
+TupleType* tuple_type_new(TypeHashSet* set, Type* types[MAX_PARAM_LENGTH], size_t types_length);
 FunctionType* function_type_new(TypeHashSet* set, Type* param_types[MAX_PARAM_LENGTH], size_t param_length, Type* return_type);
 Type* void_type_new(TypeHashSet* set);
 
 bool is_void(Type* self);
+bool is_any_primitive(Type* self);
 bool is_primitive(Type* self, PrimitiveType type);
 bool is_array(Type* self);
+bool is_tuple(Type* self);
 bool is_function(Type* self);

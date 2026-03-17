@@ -18,6 +18,8 @@
 
 #define FAKE_NULL (TypeMut) {}
 
+#define GET(node_index) nodes->data[node_index]
+
 typedef struct TypeMut {
     Type* type;
     bool is_mutable;
@@ -153,7 +155,32 @@ static void semen_error_void(Semen* self, Token pos) {
     fprintf(stderr, "Can't treat void as a value on line %d, pos %d.\n", pos.line, pos.pos);
 }
 
+static void semen_error_member_access(Semen* self, Token dot, Type* type) {
+    semen_signal_error(self);
+    fprintf(stderr, "Invalid member access for type ");
+    type_fprint(stderr, type);
+    fprintf(stderr, " on line %d, pos %d.\n", dot.line, dot.pos);
+}
+
+static void semen_error_tuple_out_of_bounds(Semen* self, Token dot, Type* type, int64_t index) {
+    semen_signal_error(self);
+    fprintf(stderr, "Index %lld out of bounds for type ", index);
+    type_fprint(stderr, type);
+    fprintf(stderr, " on line %d, pos %d.\n", dot.line, dot.pos);
+}
+
 static void semen_add_local(Semen* self, TypeMut type_mut, Token name) {
+    if(is_tuple(type_mut.type)) {
+        TupleType* type = (TupleType*) type_mut.type;
+        for(size_t i = 0; i < type->types_length; i++) {
+            self->locals[self->locals_top++] = (LocalVar) {
+                .name = "",
+                .type_mut = FAKE_NULL,
+                .scope = self->locals_scope
+            };
+        }
+    }
+
     self->locals[self->locals_top++] = (LocalVar) {
         .name = name,
         .type_mut = type_mut,
@@ -198,8 +225,10 @@ static TypeMut anal_program(Semen* self, NodeArray* nodes, NodeProgram* node) {
 }
 
 static TypeMut anal_var_decl(Semen* self, NodeArray* nodes, NodeVarDecl* node) {
-    Type* value_type = ANAL_GET_TYPE(node->value);
-    if(node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
+    Type* value_type = anal(self, nodes, node->value).type;
+    if(!self->panic_mode && node->var_type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, node->var_type, value_type);
+
+    if(!is_any_primitive(value_type) && GET(node->value).type == NODE_VAR) GET(node->value).as.var.should_deep_copy = true;
 
     semen_add_local(self, TYPE_MUT_OF_MUTABILITY(node->var_type, node->is_mutable), node->name);
 
@@ -249,12 +278,13 @@ static TypeMut anal_fun_decl(Semen* self, NodeArray* nodes, NodeFunDecl* node) {
 }
 
 static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* node) {
-    Node* lvalue = &nodes->data[node->lvalue];
+    Node* lvalue = &GET(node->lvalue);
     switch(lvalue->type) {
         case NODE_VAR:
             lvalue->as.var.should_set = true;
             break;
         case NODE_INDEX_OP:
+        case NODE_MEMBER_ACCESS_OP:
             lvalue->as.index_op.should_set = true;
             break;
         default:
@@ -267,6 +297,8 @@ static TypeMut anal_assign_stat(Semen* self, NodeArray* nodes, NodeAssignStat* n
 
     if(!var.is_mutable) semen_error_mutability(self, node->equals);
     else if(var.type != value_type) semen_error(self, SEMEN_MISMATCH, node->equals, var.type, value_type);
+
+    if(!is_any_primitive(value_type) && GET(node->rvalue).type == NODE_VAR) GET(node->rvalue).as.var.should_deep_copy = true;
 
     return FAKE_NULL;
 }
@@ -366,6 +398,7 @@ static TypeMut anal_bin_op(Semen* self, NodeArray* nodes, NodeBinOp* node) {
             fprintf(stderr, "Invalid binary operator ");
             token_fprint(stderr, node->op);
             fprintf(stderr, ". This should never happen.\n");
+            exit(-1);
             break;
     }
 
@@ -387,9 +420,30 @@ static TypeMut anal_index_op(Semen* self, NodeArray* nodes, NodeIndexOp* node) {
     TypeMut left = ANAL(node->left);
     Type* right = ANAL_GET_TYPE(node->right);
 
-    if(!is_array(left.type) || !is_primitive(right, TYPE_INT)) semen_error(self, SEMEN_INDEX, node->bracket_left, left.type, right);
+    if(!is_array(left.type) || !is_primitive(right, TYPE_INT)) semen_error(self, SEMEN_INDEX, node->op, left.type, right);
 
     return TYPE_MUT_OF_MUTABILITY(((ArrayType*) left.type)->type, left.is_mutable);
+}
+
+static TypeMut anal_member_access_op(Semen* self, NodeArray* nodes, NodeIndexOp* node) {
+    TypeMut left = ANAL(node->left);
+    NodeType right = GET(node->right).type;
+
+    if(!is_tuple(left.type) || right != NODE_INT) {
+        semen_error_member_access(self, node->op, left.type);
+        return FAKE_NULL;
+    }
+
+    TupleType* tuple = (TupleType*) left.type;
+    NodeLiteral* integer_node = &GET(node->right).as.literal;
+    char temp = integer_node->value.text[integer_node->value.text_len];
+    integer_node->value.text[integer_node->value.text_len] = '\0';
+    int64_t index = atoi(integer_node->value.text);
+    integer_node->value.text[integer_node->value.text_len] = temp;
+
+    if(index >= tuple->types_length) semen_error_tuple_out_of_bounds(self, node->op, left.type, index);
+
+    return TYPE_MUT_OF_MUTABILITY(tuple->types[index], left.is_mutable);
 }
 
 static TypeMut anal_fun_call(Semen* self, NodeArray* nodes, NodeFunCall* node) {
@@ -445,12 +499,13 @@ static TypeMut anal_var(Semen* self, NodeArray* nodes, NodeVar* node) {
 static TypeMut anal_array_list_init(Semen* self, NodeArray* nodes, NodeArrayListInit* node) {
     Type* type = ANAL_GET_TYPE(node->data[0]);
 
-    for(int i = 1; i < node->length; i++) {
+    for(int i = 0; i < node->length; i++) {
         Type* type2 = ANAL_GET_TYPE(node->data[i]);
         if(type != type2) {
             semen_error(self, SEMEN_MISMATCH, node->bracket_left, type, type2);
             return FAKE_NULL;
         }
+        if(!is_any_primitive(type2) && GET(node->data[i]).type == NODE_VAR) GET(node->data[i]).as.var.should_deep_copy = true;
     }
 
     return TYPE_MUT_OF((Type*) array_type_new(&nodes->type_hash_set, type));
@@ -468,6 +523,14 @@ static TypeMut anal_array_length_init(Semen* self, NodeArray* nodes, NodeArrayLe
     return TYPE_MUT_OF((Type*) array_type_new(&nodes->type_hash_set, type));
 }
 
+static TypeMut anal_tuple(Semen* self, NodeArray* nodes, NodeTuple* node) {
+    Type* types[node->length];
+    for(size_t i = 0; i < node->length; i++) {
+        types[i] = ANAL_GET_TYPE(node->data[i]);
+    }
+    return TYPE_MUT_OF((Type*) tuple_type_new(&nodes->type_hash_set, types, node->length));
+}
+
 static TypeMut anal_int(Semen* self, NodeArray* nodes, NodeLiteral* node) {
     return TYPE_MUT_OF((Type*) primitive_type_new(&nodes->type_hash_set, TYPE_INT));
 }
@@ -481,23 +544,25 @@ static TypeMut anal_str(Semen* self, NodeArray* nodes, NodeLiteral* node) {
 }
 
 static TypeMut anal(Semen* self, NodeArray* nodes, NodeIndex node_index) {
-    Node* node = &nodes->data[node_index];
+    Node* node = &GET(node_index);
     switch(node->type) {
         case NODE_PROGRAM: return anal_program(self, nodes, &node->as.program);
+        case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
+        case NODE_FUN_DECL: return anal_fun_decl(self, nodes, &node->as.fun_decl);
         case NODE_ASSIGN_STAT: return anal_assign_stat(self, nodes, &node->as.assign_stat);
         case NODE_PRINT_STAT: return anal_print_stat(self, nodes, &node->as.print_stat);
         case NODE_IF_STAT: return anal_if_stat(self, nodes, &node->as.if_stat);
         case NODE_WHILE_STAT: return anal_while_stat(self, nodes, &node->as.while_stat);
         case NODE_RETURN_STAT: return anal_return_stat(self, nodes, &node->as.return_stat);
-        case NODE_VAR_DECL: return anal_var_decl(self, nodes, &node->as.var_decl);
-        case NODE_FUN_DECL: return anal_fun_decl(self, nodes, &node->as.fun_decl);
         case NODE_BIN_OP: return anal_bin_op(self, nodes, &node->as.bin_op);
         case NODE_LOGICAL_OP: return anal_logical_op(self, nodes, &node->as.bin_op);
         case NODE_INDEX_OP: return anal_index_op(self, nodes, &node->as.index_op);
+        case NODE_MEMBER_ACCESS_OP: return anal_member_access_op(self, nodes, &node->as.index_op);
         case NODE_FUN_CALL: return anal_fun_call(self, nodes, &node->as.fun_call);
         case NODE_VAR: return anal_var(self, nodes, &node->as.var);
         case NODE_ARRAY_LIST_INIT: return anal_array_list_init(self, nodes, &node->as.array_list_init);
         case NODE_ARRAY_LENGTH_INIT: return anal_array_length_init(self, nodes, &node->as.array_length_init);
+        case NODE_TUPLE: return anal_tuple(self, nodes, &node->as.tuple);
         case NODE_INT: return anal_int(self, nodes, &node->as.literal);
         case NODE_BOOL: return anal_bool(self, nodes, &node->as.literal);
         case NODE_STR: return anal_str(self, nodes, &node->as.literal);

@@ -16,12 +16,15 @@ void node_array_destruct(NodeArray self) {
             case NODE_PROGRAM:
                 free(self.data[i].as.program.data);
                 break;
-            case NODE_ARRAY_LIST_INIT:
-                free(self.data[i].as.array_list_init.data);
-                break;
             case NODE_FUN_DECL:
                 free(self.data[i].as.fun_decl.param_names);
                 free(self.data[i].as.fun_decl.captured_locals.data); // This isn't necessary, since ownership is transferred to an ObjectFunction, but it gets set to NULL, so it's fine
+                break;
+            case NODE_ARRAY_LIST_INIT:
+                free(self.data[i].as.array_list_init.data);
+                break;
+            case NODE_TUPLE:
+                free(self.data[i].as.tuple.data);
                 break;
             case NODE_FUN_CALL:
                 free(self.data[i].as.fun_call.args);
@@ -132,6 +135,13 @@ void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t in
             node_fprintln(file, array, node->right, indentation + 4);
             break;
         }
+        case NODE_MEMBER_ACCESS_OP: {
+            NodeIndexOp* node = &base_node->as.index_op;
+            fprintf(file, "NodeMemberAccessOp: %s\n", node->should_set ? "SET" : "GET");
+            node_fprintln(file, array, node->left, indentation + 4);
+            node_fprintln(file, array, node->right, indentation + 4);
+            break;
+        }
         case NODE_FUN_CALL: {
             NodeFunCall* node = &base_node->as.fun_call;
             fprintf(file, "NodeFunCall:\n");
@@ -149,6 +159,12 @@ void node_fprintln(FILE* file, NodeArray* array, NodeIndex node_index, size_t in
         case NODE_ARRAY_LIST_INIT: {
             NodeArrayListInit* node = &base_node->as.array_list_init;
             fprintf(file, "NodeArrayListInit: \n");
+            for(size_t i = 0; i < node->length; i++) node_fprintln(file, array, node->data[i], indentation + 4);
+            break;
+        }
+        case NODE_TUPLE: {
+            NodeTuple* node = &base_node->as.tuple;
+            fprintf(file, "NodeTuple: \n");
             for(size_t i = 0; i < node->length; i++) node_fprintln(file, array, node->data[i], indentation + 4);
             break;
         }
